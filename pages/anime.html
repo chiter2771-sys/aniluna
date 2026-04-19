@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>AniLuna</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+
+<div class="container">
+
+  <h1 id="title"></h1>
+
+  <div class="info-box">
+    <img id="image">
+
+    <div class="info">
+      <p id="desc"></p>
+
+      <div class="meta">
+        <div>Год: <span id="year"></span></div>
+        <div>Статус: <span id="status"></span></div>
+        <div>Серии: <span id="episodesCount"></span></div>
+        <div>Длительность: <span id="duration"></span></div>
+        <div>Рейтинг: ⭐ <span id="rating"></span></div>
+      </div>
+
+      <div id="tags" class="tags"></div>
+    </div>
+  </div>
+
+  <!-- Плеер -->
+  <div class="player-box">
+    <iframe id="player" width="100%" height="450" allowfullscreen></iframe>
+  </div>
+
+</div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const animeId = params.get("id");
+
+// форматирование
+function formatStatus(status) {
+  const map = {
+    released: "Вышло",
+    ongoing: "Выходит",
+    anons: "Анонс"
+  };
+  return map[status] || status;
+}
+
+function formatDate(date) {
+  if (!date) return "Неизвестно";
+  return date.split("-")[0];
+}
+
+function cleanDescription(text) {
+  return text
+    .replace(/\[.*?\]/g, "")
+    .replace(/<\/?[^>]+(>|$)/g, "")
+    .trim();
+}
+
+// fallback
+function fallbackPlayer(player) {
+  player.outerHTML = `
+    <div style="padding:20px; text-align:center;">
+      <h2>😢 Плеер не загрузился</h2>
+      <p>Либо блок, либо источник сдох</p>
+
+      <a href="https://jut.su/" target="_blank"
+         style="color:#9f7aea; font-size:18px;">
+         👉 Смотреть на Jut.su
+      </a>
+    </div>
+  `;
+}
+
+// 🔥 ГЛАВНАЯ ФУНКЦИЯ
+async function loadAnime() {
+  try {
+    // берём инфу ЧЕРЕЗ СЕРВЕР (важно!)
+    const res = await fetch(`/api/anime/${animeId}`);
+
+    if (!res.ok) throw new Error("API умер");
+
+    const anime = await res.json();
+
+    // данные
+    document.getElementById("title").textContent = anime.title || "Без названия";
+    document.getElementById("image").src = anime.image || "";
+
+    document.getElementById("desc").textContent =
+      anime.description
+        ? cleanDescription(anime.description)
+        : "Описание отсутствует";
+
+    document.getElementById("year").textContent = formatDate(anime.aired_on);
+    document.getElementById("status").textContent = formatStatus(anime.status);
+    document.getElementById("episodesCount").textContent = anime.episodes || "?";
+    document.getElementById("duration").textContent = (anime.duration || "?") + " мин";
+    document.getElementById("rating").textContent = anime.score || "?";
+
+    // жанры
+    const tags = document.getElementById("tags");
+    tags.innerHTML = "";
+
+    if (anime.genres) {
+      anime.genres.forEach(g => {
+        const span = document.createElement("span");
+        span.textContent = g.russian;
+        span.className = "tag";
+        tags.appendChild(span);
+      });
+    }
+
+    // 🎬 ПЛЕЕР
+    const player = document.getElementById("player");
+
+    fetch(`/api/player/${animeId}`)
+      .then(res => res.text())
+      .then(html => {
+        const match = html.match(/src="([^"]+)"/);
+
+        if (match && match[1]) {
+          player.src = match[1];
+        } else {
+          fallbackPlayer(player);
+        }
+      })
+      .catch(() => fallbackPlayer(player));
+
+  } catch (err) {
+    console.error(err);
+
+    document.body.innerHTML = `
+      <div style="text-align:center; padding:50px;">
+        <h1>😢 Ошибка загрузки</h1>
+        <p>Либо блокировка, либо API умер</p>
+      </div>
+    `;
+  }
+}
+
+// запуск
+loadAnime();
+</script>
+
+</body>
+</html>

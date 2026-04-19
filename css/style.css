@@ -1,0 +1,311 @@
+/* 🔥 БАЗА */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: Arial;
+}
+
+body {
+  background: linear-gradient(180deg, #05070f, #0a0f1f);
+  color: white;
+}
+
+/* 🔥 КОНТЕЙНЕР */
+.container {
+  max-width: 1200px;
+  margin: auto;
+}
+
+/* 🔥 ШАПКА */
+header {
+  padding: 25px 20px;
+}
+
+.logo {
+  font-size: 32px;
+  color: #c4b5fd;
+  text-shadow: 0 0 25px #8b5cf6;
+}
+
+/* 🔥 ПОИСК */
+#search {
+  margin: 20px;
+  padding: 12px;
+  width: calc(100% - 40px);
+  border-radius: 12px;
+  border: none;
+  background: #111827;
+  color: white;
+}
+
+/* 🔥 GRID */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 20px;
+  padding: 20px;
+}
+
+/* 🔥 КАРТОЧКА */
+.card {
+  background: #111827;
+  border-radius: 16px;
+  overflow: hidden;
+  transition: 0.3s;
+  cursor: pointer;
+  position: relative;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 0 40px rgba(139,92,246,0.6);
+}
+
+.card img {
+  width: 100%;
+  height: 240px;
+  object-fit: cover;
+}
+
+.card h3 {
+  padding: 10px;
+  font-size: 16px;
+}
+
+/* 🔥 18+ */
+.age {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: red;
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+/* 🔥 СТРАНИЦА АНИМЕ */
+.anime-page {
+  display: flex;
+  gap: 30px;
+  padding: 20px;
+  flex-wrap: wrap;
+}
+
+.anime-left {
+  flex: 0 0 250px;
+}
+
+.anime-left img {
+  width: 100%;
+  border-radius: 16px;
+  box-shadow: 0 0 30px rgba(139,92,246,0.5);
+}
+
+.anime-right {
+  flex: 1;
+}
+
+.anime-title {
+  font-size: 32px;
+  margin-bottom: 15px;
+}
+
+.anime-desc {
+  color: #9ca3af;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+/* 🔥 ПЛЕЕР */
+.player-box {
+  margin: 20px 0;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 0 60px rgba(139,92,246,0.6);
+  background: black;
+}
+
+.player-box iframe {
+  width: 100%;
+  height: 500px;
+  border: none;
+}
+
+/* 🔥 СЕРИИ */
+.episodes {
+  margin-top: 20px;
+  background: #111827;
+  padding: 20px;
+  border-radius: 20px;
+}
+
+.ep-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.ep {
+  background: #1f2937;
+  padding: 10px 15px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.ep:hover {
+  background: #8b5cf6;
+  color: white;
+}
+
+.ep.active {
+  background: #8b5cf6;
+  color: white;
+}
+
+/* 🔥 АДАПТИВ */
+@media (max-width: 768px) {
+  .anime-page {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .anime-left {
+    width: 200px;
+  }
+
+  .anime-right {
+    width: 100%;
+  }
+}
+h2 {
+  margin-left: 20px;
+  color: #c4b5fd;
+}
+.container {
+  max-width: 1200px;
+  margin: auto;
+  padding: 0 10px;
+}
+.genre-title {
+  margin: 20px 20px 0 20px;
+}
+.section {
+  padding: 0 20px;
+}
+.info-box {
+  display: flex;
+  gap: 30px;
+  padding: 20px;
+}
+
+.info-box img {
+  width: 250px;
+  border-radius: 20px;
+}
+
+.info {
+  max-width: 600px;
+}
+
+.meta {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.tags {
+  margin-top: 15px;
+}
+
+.tag {
+  display: inline-block;
+  background: #1f2937;
+  padding: 6px 12px;
+  border-radius: 10px;
+  margin: 5px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 20px;
+}
+
+.card {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: 0.3s;
+  background: #111;
+}
+
+.card img {
+  width: 100%;
+  height: 260px;
+  object-fit: cover;
+  transition: 0.3s;
+}
+
+.card h3 {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  padding: 10px;
+  font-size: 14px;
+  background: linear-gradient(transparent, rgba(0,0,0,0.9));
+}
+
+.card:hover {
+  transform: translateY(-8px) scale(1.03);
+  box-shadow: 0 0 20px #7a5cff;
+}
+
+.card:hover img {
+  filter: brightness(0.7);
+}
+.genres {
+  display: flex;
+  gap: 10px;
+  margin: 20px 0;
+  flex-wrap: wrap;
+}
+
+.genres button {
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: none;
+  background: #222;
+  color: #fff;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.genres button:hover {
+  background: #7a5cff;
+}
+img {
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.img-wrap {
+  pointer-events: none;
+}
+.tags {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag {
+  background: rgba(122, 92, 255, 0.2);
+  border: 1px solid #7a5cff;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+}

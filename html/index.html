@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>AniLuna</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+
+<header>
+  <div class="container">
+    <div class="logo">AniLuna</div>
+  </div>
+</header>
+
+<input type="text" id="search" placeholder="Поиск аниме...">
+
+<div class="container">
+  <div id="grid" class="grid"></div>
+</div>
+
+<script src="../js/anime.js"></script>
+
+<script>
+const grid = document.getElementById("grid");
+
+animeList.forEach(anime => {
+  const card = document.createElement("div");
+  card.className = "card";
+
+  card.innerHTML = `
+    <img src="${anime.image}">
+    <div class="title">${anime.title}</div>
+  `;
+
+  card.onclick = () => {
+    window.location.href = `/pages/anime.html?id=${anime.id}`;
+  };
+<div id="genres" class="genres"></div>
+  grid.appendChild(card);
+});
+</script>
+
+</body>
+</html>
