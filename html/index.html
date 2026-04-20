@@ -8,6 +8,44 @@
 </head>
 <body>
   <header class="site-header">
+    <div class="container topbar">
+      <a href="/" class="logo">AniLuna</a>
+
+      <div class="header-search-wrap">
+        <input type="text" id="search" placeholder="Поиск аниме..." aria-label="Поиск аниме">
+      </div>
+
+      <nav class="header-links">
+        <a href="/">Главная</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container page-space">
+    <section class="hero">
+      <h1>Каталог аниме</h1>
+      <p>Фильтруй по жанру, году, статусу и типу — как на больших каталогах.</p>
+
+      <div class="filters-grid">
+        <select id="filterGenre"><option value="">Все жанры</option></select>
+        <select id="filterYear"><option value="">Все годы</option></select>
+        <select id="filterStatus">
+          <option value="">Любой статус</option>
+          <option value="released">Вышло</option>
+          <option value="ongoing">Выходит</option>
+          <option value="anons">Анонс</option>
+        </select>
+        <select id="filterKind">
+          <option value="">Любой тип</option>
+          <option value="tv">TV</option>
+          <option value="movie">Фильм</option>
+          <option value="ova">OVA</option>
+          <option value="ona">ONA</option>
+          <option value="special">Special</option>
+        </select>
+      </div>
+
+      <div id="genres" class="genres"></div>
     <div class="container header-row">
       <div class="logo">AniLuna</div>
       <div class="header-subtitle">Каталог аниме с современным интерфейсом и легальными источниками</div>
@@ -24,6 +62,7 @@
 
     <section>
       <div id="grid" class="grid"></div>
+      <button id="loadMore" class="load-more">Загрузить ещё</button>
     </section>
   </main>
 
