@@ -2,45 +2,31 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AniLuna</title>
   <link rel="stylesheet" href="../css/style.css">
 </head>
-
 <body>
+  <header class="site-header">
+    <div class="container header-row">
+      <div class="logo">AniLuna</div>
+      <div class="header-subtitle">Каталог аниме с современным интерфейсом и легальными источниками</div>
+    </div>
+  </header>
 
-<header>
-  <div class="container">
-    <div class="logo">AniLuna</div>
-  </div>
-</header>
+  <main class="container">
+    <section class="hero">
+      <h1>Смотри аниме в удобном интерфейсе</h1>
+      <p>Быстрый поиск, фильтрация по жанрам и современная карточная сетка.</p>
+      <input type="text" id="search" placeholder="Поиск аниме по названию..." aria-label="Поиск аниме">
+      <div id="genres" class="genres" aria-label="Фильтр по жанрам"></div>
+    </section>
 
-<input type="text" id="search" placeholder="Поиск аниме...">
+    <section>
+      <div id="grid" class="grid"></div>
+    </section>
+  </main>
 
-<div class="container">
-  <div id="grid" class="grid"></div>
-</div>
-
-<script src="../js/anime.js"></script>
-
-<script>
-const grid = document.getElementById("grid");
-
-animeList.forEach(anime => {
-  const card = document.createElement("div");
-  card.className = "card";
-
-  card.innerHTML = `
-    <img src="${anime.image}">
-    <div class="title">${anime.title}</div>
-  `;
-
-  card.onclick = () => {
-    window.location.href = `/pages/anime.html?id=${anime.id}`;
-  };
-<div id="genres" class="genres"></div>
-  grid.appendChild(card);
-});
-</script>
-
+  <script src="../js/anime.js"></script>
 </body>
 </html>

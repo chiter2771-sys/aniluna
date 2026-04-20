@@ -1,7 +1,6 @@
 const express = require("express");
 const path = require("path");
 const axios = require("axios");
-const cheerio = require("cheerio");
 const cors = require("cors");
 
 const app = express();
@@ -10,21 +9,14 @@ const root = path.join(__dirname, "..");
 app.use(cors());
 app.use(express.static(root));
 
-/* =========================
-   КЭШ
-========================= */
-
 const cache = {
   list: null,
   listTime: 0,
-  anime: {}
+  anime: {},
+  player: {}
 };
 
-const CACHE_TIME = 1000 * 60 * 10; // 10 минут
-
-/* =========================
-   СТРАНИЦЫ
-========================= */
+const CACHE_TIME = 1000 * 60 * 10;
 
 app.get("/", (req, res) => {
   res.sendFile(path.join(root, "html", "index.html"));
@@ -34,14 +26,9 @@ app.get("/title", (req, res) => {
   res.sendFile(path.join(root, "pages", "anime.html"));
 });
 
-/* =========================
-   API: СПИСОК
-========================= */
-
 app.get("/api/list", async (req, res) => {
   try {
     if (cache.list && Date.now() - cache.listTime < CACHE_TIME) {
-      console.log("📦 list из кеша");
       return res.json(cache.list);
     }
 
@@ -56,37 +43,27 @@ app.get("/api/list", async (req, res) => {
     cache.list = response.data;
     cache.listTime = Date.now();
 
-    console.log("🌐 list с API");
-
-    res.json(response.data);
-
+    return res.json(response.data);
   } catch (err) {
-    console.log("❌ Ошибка списка:", err.message);
+    console.error("Ошибка списка:", err.message);
 
     if (cache.list) {
-      console.log("⚠️ отдаю старый кеш");
       return res.json(cache.list);
     }
 
-    res.status(500).json({ error: "API умер" });
+    return res.status(500).json({ error: "Не удалось загрузить список" });
   }
 });
-
-/* =========================
-   API: АНИМЕ
-========================= */
 
 app.get("/api/anime/:id", async (req, res) => {
   try {
     const id = req.params.id;
 
     if (cache.anime[id] && Date.now() - cache.anime[id].time < CACHE_TIME) {
-      console.log("📦 anime из кеша:", id);
       return res.json(cache.anime[id].data);
     }
 
-    const animeRes = await axios.get(
-      `https://shikimori.one/api/animes/${id}`,
+    const animeRes = await axios.get(`https://shikimori.one/api/animes/${id}`,
       {
         headers: { "User-Agent": "Mozilla/5.0" },
         timeout: 7000
@@ -95,39 +72,16 @@ app.get("/api/anime/:id", async (req, res) => {
 
     const anime = animeRes.data;
 
-    // JUT (не критично)
-    let episodes = [];
-
-    try {
-      const query = anime.name.replace(/\s+/g, "-").toLowerCase();
-      const url = `https://jut.su/${query}/`;
-
-      const { data } = await axios.get(url, {
-        headers: { "User-Agent": "Mozilla/5.0" }
-      });
-
-      const $ = cheerio.load(data);
-
-      $(".short-btn").each((i, el) => {
-        const link = $(el).attr("href");
-        if (link) episodes.push("https://jut.su" + link);
-      });
-
-    } catch {
-      console.log("⚠️ JUT не доступен");
-    }
-
     const result = {
       title: anime.russian || anime.name,
-      image: "https://shikimori.one" + anime.image.original,
+      image: anime.image?.original ? "https://shikimori.one" + anime.image.original : "",
       description: anime.description,
       aired_on: anime.aired_on,
       status: anime.status,
       episodes: anime.episodes,
       duration: anime.duration,
       score: anime.score,
-      genres: anime.genres,
-      episodesList: episodes
+      genres: anime.genres || []
     };
 
     cache.anime[id] = {
@@ -135,26 +89,51 @@ app.get("/api/anime/:id", async (req, res) => {
       time: Date.now()
     };
 
-    res.json(result);
-
+    return res.json(result);
   } catch (err) {
-    console.log("❌ Ошибка anime:", err.message);
-    res.status(500).json({ error: "Ошибка аниме" });
+    console.error("Ошибка anime:", err.message);
+    return res.status(500).json({ error: "Ошибка получения аниме" });
   }
 });
 
-/* =========================
-   ПЛЕЕР (ОТКЛЮЧАЕМ ЭТУ ХЕРНЮ)
-========================= */
+app.get("/api/player/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
 
-app.get("/api/player/:id", (req, res) => {
-  res.status(404).send("Плеер отключен");
+    if (cache.player[id] && Date.now() - cache.player[id].time < CACHE_TIME) {
+      return res.json(cache.player[id].data);
+    }
+
+    const response = await axios.get(`https://shikimori.one/api/animes/${id}/videos`, {
+      headers: { "User-Agent": "Mozilla/5.0" },
+      timeout: 7000
+    });
+
+    const sources = (response.data || [])
+      .filter((item) => item.kind === "pv" || item.kind === "op" || item.kind === "ed")
+      .slice(0, 4)
+      .map((item, idx) => ({
+        label: `${(item.kind || "video").toUpperCase()} ${idx + 1}`,
+        embedUrl: item.player_url
+      }))
+      .filter((item) => item.embedUrl);
+
+    const payload = { sources };
+
+    cache.player[id] = {
+      data: payload,
+      time: Date.now()
+    };
+
+    return res.json(payload);
+  } catch (err) {
+    console.error("Ошибка player:", err.message);
+    return res.json({ sources: [] });
+  }
 });
-
-/* ========================= */
 
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("🔥 Сервер запущен на порту " + PORT);
+  console.log("Сервер запущен на порту " + PORT);
 });
