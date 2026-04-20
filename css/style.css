@@ -1,385 +1,323 @@
-/* 🔥 БАЗА */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: Arial;
+:root {
+  --bg: #040915;
+  --surface: #0c1630;
+  --surface-soft: #101e3f;
+  --line: rgba(148, 163, 184, 0.25);
+  --text: #e5e7eb;
+  --muted: #94a3b8;
+  --accent: #8b5cf6;
+  --accent-2: #3b82f6;
+  --danger: #ff5d7d;
 }
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  background: linear-gradient(180deg, #05070f, #0a0f1f);
-  color: white;
+  font-family: Inter, Arial, sans-serif;
+  color: var(--text);
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(139, 92, 246, 0.14), transparent 30%),
+    radial-gradient(circle at 85% 0%, rgba(59, 130, 246, 0.16), transparent 27%),
+    var(--bg);
 }
 
-/* 🔥 КОНТЕЙНЕР */
-.container {
-  max-width: 1200px;
-  margin: auto;
+.container { width: min(1280px, calc(100% - 32px)); margin: 0 auto; }
+.page-space { padding: 20px 0 50px; }
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(4, 9, 21, 0.78);
 }
 
-/* 🔥 ШАПКА */
-header {
-  padding: 25px 20px;
+.topbar {
+  min-height: 76px;
+  display: grid;
+  grid-template-columns: auto minmax(220px, 460px) auto;
+  align-items: center;
+  gap: 14px;
 }
 
 .logo {
-  font-size: 32px;
   color: #c4b5fd;
-  text-shadow: 0 0 25px #8b5cf6;
+  text-decoration: none;
+  font-size: 44px;
+  font-weight: 900;
+  letter-spacing: 0.4px;
+  text-shadow: 0 0 24px rgba(139, 92, 246, 0.54);
 }
 
-/* 🔥 ПОИСК */
-#search {
-  margin: 20px;
-  padding: 12px;
-  width: calc(100% - 40px);
+.header-search-wrap input {
+  width: 100%;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(17, 24, 39, 0.8);
+  color: var(--text);
+  padding: 12px 16px;
+  font-size: 15px;
+}
+
+input, select {
+  outline: none;
+}
+
+.header-search-wrap input:focus,
+select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+}
+
+.header-links a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 18px;
+}
+
+.hero {
+  border: 1px solid var(--line);
+  background: linear-gradient(130deg, rgba(13, 28, 60, 0.9), rgba(24, 24, 58, 0.72));
+  border-radius: 26px;
+  padding: 24px;
+}
+
+.hero h1 { font-size: clamp(28px, 4vw, 44px); margin-bottom: 8px; }
+.hero p { color: var(--muted); margin-bottom: 16px; }
+
+.filters-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.filters-grid select {
+  width: 100%;
   border-radius: 12px;
-  border: none;
-  background: #111827;
-  color: white;
+  border: 1px solid var(--line);
+  padding: 11px;
+  background: rgba(12, 22, 48, 0.9);
+  color: var(--text);
 }
 
-/* 🔥 GRID */
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 20px;
-  padding: 20px;
-}
-
-/* 🔥 КАРТОЧКА */
-.card {
-  background: #111827;
-  border-radius: 16px;
-  overflow: hidden;
-  transition: 0.3s;
-  cursor: pointer;
-  position: relative;
-}
-
-.card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 0 40px rgba(139,92,246,0.6);
-}
-
-.card img {
-  width: 100%;
-  height: 240px;
-  object-fit: cover;
-}
-
-.card h3 {
-  padding: 10px;
-  font-size: 16px;
-}
-
-/* 🔥 18+ */
-.age {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  background: red;
-  padding: 5px 8px;
-  border-radius: 6px;
-  font-size: 12px;
-}
-
-/* 🔥 СТРАНИЦА АНИМЕ */
-.anime-page {
-  display: flex;
-  gap: 30px;
-  padding: 20px;
-  flex-wrap: wrap;
-}
-
-.anime-left {
-  flex: 0 0 250px;
-}
-
-.anime-left img {
-  width: 100%;
-  border-radius: 16px;
-  box-shadow: 0 0 30px rgba(139,92,246,0.5);
-}
-
-.anime-right {
-  flex: 1;
-}
-
-.anime-title {
-  font-size: 32px;
-  margin-bottom: 15px;
-}
-
-.anime-desc {
-  color: #9ca3af;
-  margin-bottom: 20px;
-  line-height: 1.5;
-}
-
-/* 🔥 ПЛЕЕР */
-.player-box {
-  margin: 20px 0;
-  border-radius: 20px;
-  overflow: hidden;
-  box-shadow: 0 0 60px rgba(139,92,246,0.6);
-  background: black;
-}
-
-.player-box iframe {
-  width: 100%;
-  height: 500px;
-  border: none;
-}
-
-/* 🔥 СЕРИИ */
-.episodes {
-  margin-top: 20px;
-  background: #111827;
-  padding: 20px;
-  border-radius: 20px;
-}
-
-.ep-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.ep {
-  background: #1f2937;
-  padding: 10px 15px;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: 0.2s;
-}
-
-.ep:hover {
-  background: #8b5cf6;
-  color: white;
-}
-
-.ep.active {
-  background: #8b5cf6;
-  color: white;
-}
-
-/* 🔥 АДАПТИВ */
-@media (max-width: 768px) {
-  .anime-page {
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .anime-left {
-    width: 200px;
-  }
-
-  .anime-right {
-    width: 100%;
-  }
-}
-h2 {
-  margin-left: 20px;
-  color: #c4b5fd;
-}
-.container {
-  max-width: 1200px;
-  margin: auto;
-  padding: 0 10px;
-}
-.genre-title {
-  margin: 20px 20px 0 20px;
-}
-.section {
-  padding: 0 20px;
-}
-.info-box {
-  display: flex;
-  gap: 30px;
-  padding: 20px;
-}
-
-.info-box img {
-  width: 250px;
-  border-radius: 20px;
-}
-
-.info {
-  max-width: 600px;
-}
-
-.meta {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-  margin-top: 15px;
-}
-
-.tags {
-  margin-top: 15px;
-}
-
-.tag {
-  display: inline-block;
-  background: #1f2937;
-  padding: 6px 12px;
-  border-radius: 10px;
-  margin: 5px;
-}
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 20px;
-}
-
-.card {
-  position: relative;
-  border-radius: 16px;
-  overflow: hidden;
-  cursor: pointer;
-  transition: 0.3s;
-  background: #111;
-}
-
-.card img {
-  width: 100%;
-  height: 260px;
-  object-fit: cover;
-  transition: 0.3s;
-}
-
-.card h3 {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  padding: 10px;
-  font-size: 14px;
-  background: linear-gradient(transparent, rgba(0,0,0,0.9));
-}
-
-.card:hover {
-  transform: translateY(-8px) scale(1.03);
-  box-shadow: 0 0 20px #7a5cff;
-}
-
-.card:hover img {
-  filter: brightness(0.7);
-}
-.genres {
-  display: flex;
-  gap: 10px;
-  margin: 20px 0;
-  flex-wrap: wrap;
-}
-
-.genres button {
-  padding: 6px 12px;
-  border-radius: 20px;
-  border: none;
-  background: #222;
-  color: #fff;
-  cursor: pointer;
-  transition: 0.2s;
-}
-
-.genres button:hover {
-  background: #7a5cff;
-}
-img {
-  pointer-events: none;
-  user-select: none;
-  -webkit-user-drag: none;
-}
-.img-wrap {
-  pointer-events: none;
-}
-.tags {
-  margin-top: 10px;
+.genres,
+.source-buttons {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.tag {
-  background: rgba(122, 92, 255, 0.2);
-  border: 1px solid #7a5cff;
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-size: 12px;
-}
-.player-box {
-  position: relative;
-  border-radius: 20px;
-  overflow: hidden;
-  background: black;
+.genre-btn,
+.source-btn,
+.load-more,
+.primary-btn,
+.ghost-btn {
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(16, 30, 63, 0.86);
+  color: var(--text);
+  cursor: pointer;
+  transition: 0.2s ease;
 }
 
-.player-box iframe {
-  border: none;
+.genre-btn,
+.source-btn { padding: 8px 13px; }
+
+.genre-btn:hover,
+.source-btn:hover,
+.genre-btn.active,
+.source-btn.active,
+.load-more:hover,
+.primary-btn:hover,
+.ghost-btn:hover {
+  border-color: rgba(196, 181, 253, 0.95);
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.17) inset;
+  background: rgba(139, 92, 246, 0.28);
 }
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 20px;
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(198px, 1fr));
+  gap: 16px;
+  margin: 24px 0;
 }
-/* 🔥 NETFLIX CARD UPGRADE */
 
 .card {
+  border-radius: 18px;
+  overflow: hidden;
+  background: rgba(12, 22, 48, 0.88);
+  border: 1px solid var(--line);
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(139, 92, 246, 0.95);
+  box-shadow: 0 14px 28px rgba(2, 6, 23, 0.5);
+}
+
+.card-img {
+  aspect-ratio: 2 / 3;
   position: relative;
+  overflow: hidden;
+}
+
+.card-img img { width: 100%; height: 100%; object-fit: cover; }
+
+.age-badge {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  border-radius: 10px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 7px;
+}
+
+.card-overlay { padding: 10px; }
+.card-overlay h3 { font-size: 16px; line-height: 1.35; margin-bottom: 8px; min-height: 42px; }
+.card-info { display: flex; justify-content: space-between; font-size: 14px; color: var(--muted); }
+
+.load-more {
+  display: block;
+  margin: 0 auto;
+  padding: 11px 18px;
+}
+
+.anime-layout { padding: 22px 0 48px; }
+.back-link { color: #d8c9ff; text-decoration: none; display: inline-block; margin-bottom: 14px; }
+
+.info-box,
+.player-box,
+.content-block {
+  background: rgba(12, 22, 48, 0.88);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.big-info {
+  display: grid;
+  grid-template-columns: minmax(180px, 320px) 1fr;
+  gap: 20px;
+}
+
+.big-info img { width: 100%; border-radius: 14px; object-fit: cover; }
+.muted { color: var(--muted); margin: 5px 0 16px; }
+
+.meta {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.meta-item {
+  background: rgba(17, 24, 39, 0.46);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 12px;
+  padding: 10px;
+}
+.meta-item span { color: var(--muted); font-size: 13px; display: block; margin-bottom: 6px; }
+.meta-item strong { font-size: 24px; }
+
+.tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.tag {
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: rgba(139, 92, 246, 0.2);
+  border: 1px solid rgba(139, 92, 246, 0.5);
+}
+
+.player-box h2,
+.content-block h2 { margin-bottom: 8px; }
+#playerHint { color: var(--muted); margin-bottom: 10px; }
+.player-mount {
   border-radius: 16px;
   overflow: hidden;
-  cursor: pointer;
-  transition: 0.3s;
-  background: #111;
+  border: 1px solid var(--line);
+  background: #000;
+  margin-bottom: 10px;
 }
 
-.card-img img {
-  width: 100%;
-  height: 260px;
-  object-fit: cover;
-  transition: 0.4s;
+.player-mount iframe { width: 100%; height: min(56vw, 630px); border: 0; display: block; }
+.player-empty { min-height: 190px; display: grid; place-items: center; color: var(--muted); text-align: center; padding: 14px; }
+
+.long-text { color: #d0d7e6; line-height: 1.65; white-space: pre-line; }
+
+.horizontal-list {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
 }
 
-/* затемнение */
-.card::after {
-  content: "";
-  position: absolute;
+.mini-card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(13, 28, 60, 0.7);
+  cursor: default;
+}
+
+#related .mini-card { cursor: pointer; }
+#related .mini-card:hover { border-color: rgba(139, 92, 246, 0.9); }
+
+.mini-card img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; display: block; }
+.mini-card-info { padding: 8px; }
+.mini-card-info strong { display: block; font-size: 14px; line-height: 1.3; }
+.mini-card-info span { color: var(--muted); font-size: 12px; }
+
+.empty-state,
+.empty-inline,
+.error-screen {
+  border: 1px dashed rgba(148, 163, 184, 0.5);
+  border-radius: 14px;
+  padding: 22px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.age-modal-overlay {
+  position: fixed;
   inset: 0;
-  background: linear-gradient(transparent, rgba(0,0,0,0.9));
+  background: rgba(2, 6, 23, 0.7);
+  backdrop-filter: blur(6px);
+  display: grid;
+  place-items: center;
+  z-index: 100;
 }
 
-/* overlay инфа */
-.card-overlay {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  padding: 12px;
-  width: 100%;
-  z-index: 2;
+.age-modal {
+  width: min(460px, calc(100% - 24px));
+  background: rgba(12, 22, 48, 0.96);
+  border: 1px solid rgba(139, 92, 246, 0.8);
+  border-radius: 24px;
+  box-shadow: 0 0 34px rgba(139, 92, 246, 0.5);
+  padding: 22px;
+  text-align: center;
 }
 
-.card-overlay h3 {
-  font-size: 14px;
-  margin-bottom: 5px;
+.age-modal h3 { font-size: 32px; color: #d8c9ff; margin-bottom: 10px; }
+.age-modal p { color: var(--muted); line-height: 1.5; }
+.age-actions { margin-top: 16px; display: flex; gap: 10px; justify-content: center; }
+.primary-btn, .ghost-btn { padding: 10px 14px; border-radius: 10px; }
+
+@media (max-width: 1024px) {
+  .topbar { grid-template-columns: 1fr; padding: 10px 0; }
+  .logo { font-size: 38px; }
+  .header-links { display: none; }
+  .filters-grid { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+  .meta { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
 }
 
-/* инфа */
-.card-info {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  color: #aaa;
-}
-
-/* hover эффект */
-.card:hover {
-  transform: scale(1.08);
-  z-index: 10;
-  box-shadow: 0 0 30px #7a5cff;
-}
-
-.card:hover img {
-  filter: brightness(0.6);
+@media (max-width: 760px) {
+  .big-info { grid-template-columns: 1fr; }
+  .meta-item strong { font-size: 20px; }
+  .grid { grid-template-columns: repeat(auto-fill, minmax(156px, 1fr)); }
 }
