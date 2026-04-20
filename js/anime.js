@@ -1,28 +1,55 @@
 let allAnime = [];
 
-// 🔥 Загрузка аниме
+// 🔥 Загрузка через ТВОЙ сервер (важно для РФ)
 async function loadAnime() {
-  const res = await fetch("https://shikimori.one/api/animes?limit=50&order=popularity");
-  const data = await res.json();
+  try {
+    const res = await fetch("/api/list");
 
-  allAnime = data;
-  renderAnime(data);
+    if (!res.ok) throw new Error("API умер");
+
+    const data = await res.json();
+
+    allAnime = data;
+    renderAnime(data);
+
+  } catch (err) {
+    console.log("Ошибка загрузки:", err.message);
+
+    document.getElementById("grid").innerHTML = `
+      <div style="text-align:center; padding:40px;">
+        <h2>😢 Не удалось загрузить аниме</h2>
+        <p>Без VPN тут всё разваливается, добро пожаловать в реальность</p>
+      </div>
+    `;
+  }
 }
 
-// 🔥 Отрисовка карточек
+// 🎬 Карточки Netflix-style
 function renderAnime(list) {
   const container = document.getElementById("grid");
   container.innerHTML = "";
 
   list.forEach(anime => {
+    const title = anime.russian || anime.name;
+    const image = "https://shikimori.one" + anime.image.original;
+    const rating = anime.score || "?";
+    const genres = anime.genres?.slice(0, 2).map(g => g.russian).join(", ") || "";
+
     const card = document.createElement("div");
     card.className = "card";
 
     card.innerHTML = `
-      <div class="img-wrap">
-        <img src="https://shikimori.one${anime.image.original}">
+      <div class="card-img">
+        <img src="${image}">
       </div>
-      <h3>${anime.russian || anime.name}</h3>
+
+      <div class="card-overlay">
+        <h3>${title}</h3>
+        <div class="card-info">
+          <span>⭐ ${rating}</span>
+          <span>${genres}</span>
+        </div>
+      </div>
     `;
 
     card.onclick = () => {
@@ -33,7 +60,7 @@ function renderAnime(list) {
   });
 }
 
-// 🔍 ПОИСК
+// 🔍 Поиск
 document.getElementById("search").addEventListener("input", (e) => {
   const value = e.target.value.toLowerCase();
 
@@ -44,13 +71,12 @@ document.getElementById("search").addEventListener("input", (e) => {
   renderAnime(filtered);
 });
 
-// 🎭 ЖАНРЫ (простые кнопки)
+// 🎭 Жанры
 function renderGenres() {
   const genres = ["Экшен", "Драма", "Комедия", "Фэнтези", "Романтика"];
-
   const container = document.getElementById("genres");
 
-  if (!container) return; // если блока нет — не падаем
+  if (!container) return;
 
   genres.forEach(g => {
     const btn = document.createElement("button");
@@ -68,6 +94,6 @@ function renderGenres() {
   });
 }
 
-// 🚀 Запуск
+// 🚀 запуск
 loadAnime();
 renderGenres();
