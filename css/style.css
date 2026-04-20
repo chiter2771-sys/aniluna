@@ -309,3 +309,13 @@ img {
   border-radius: 20px;
   font-size: 12px;
 }
+.player-box {
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  background: black;
+}
+
+.player-box iframe {
+  border: none;
+}

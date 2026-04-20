@@ -30,9 +30,9 @@
     </div>
   </div>
 
-  <!-- Плеер -->
+  <!-- 🎬 ПЛЕЕР -->
   <div class="player-box">
-    <iframe id="player" width="100%" height="450" allowfullscreen></iframe>
+    <iframe id="player" allowfullscreen></iframe>
   </div>
 
 </div>
@@ -41,7 +41,10 @@
 const params = new URLSearchParams(window.location.search);
 const animeId = params.get("id");
 
-// форматирование
+/* =========================
+   ФОРМАТИРОВАНИЕ
+========================= */
+
 function formatStatus(status) {
   const map = {
     released: "Вышло",
@@ -63,12 +66,17 @@ function cleanDescription(text) {
     .trim();
 }
 
-// fallback
-function fallbackPlayer(player) {
-  player.outerHTML = `
-    <div style="padding:20px; text-align:center;">
+/* =========================
+   FALLBACK ПЛЕЕРА
+========================= */
+
+function fallbackPlayer() {
+  const box = document.querySelector(".player-box");
+
+  box.innerHTML = `
+    <div style="padding:30px; text-align:center;">
       <h2>😢 Плеер не загрузился</h2>
-      <p>Либо блок, либо источник сдох</p>
+      <p>Источник заблокирован или умер</p>
 
       <a href="https://jut.su/" target="_blank"
          style="color:#9f7aea; font-size:18px;">
@@ -78,59 +86,78 @@ function fallbackPlayer(player) {
   `;
 }
 
-// 🔥 ГЛАВНАЯ ФУНКЦИЯ
+/* =========================
+   ЗАГРУЗКА АНИМЕ
+========================= */
+
 async function loadAnime() {
   try {
-    // берём инфу ЧЕРЕЗ СЕРВЕР (важно!)
     const res = await fetch(`/api/anime/${animeId}`);
-
-    if (!res.ok) throw new Error("API умер");
+    if (!res.ok) throw new Error("API error");
 
     const anime = await res.json();
 
-    // данные
-    document.getElementById("title").textContent = anime.title || "Без названия";
-    document.getElementById("image").src = anime.image || "";
+    // 🔥 данные
+    document.getElementById("title").textContent =
+      anime.title || "Без названия";
+
+    document.getElementById("image").src =
+      anime.image || "";
 
     document.getElementById("desc").textContent =
       anime.description
         ? cleanDescription(anime.description)
         : "Описание отсутствует";
 
-    document.getElementById("year").textContent = formatDate(anime.aired_on);
-    document.getElementById("status").textContent = formatStatus(anime.status);
-    document.getElementById("episodesCount").textContent = anime.episodes || "?";
-    document.getElementById("duration").textContent = (anime.duration || "?") + " мин";
-    document.getElementById("rating").textContent = anime.score || "?";
+    document.getElementById("year").textContent =
+      formatDate(anime.aired_on);
 
-    // жанры
+    document.getElementById("status").textContent =
+      formatStatus(anime.status);
+
+    document.getElementById("episodesCount").textContent =
+      anime.episodes || "?";
+
+    document.getElementById("duration").textContent =
+      (anime.duration || "?") + " мин";
+
+    document.getElementById("rating").textContent =
+      anime.score || "?";
+
+    // 🎭 жанры
     const tags = document.getElementById("tags");
     tags.innerHTML = "";
 
     if (anime.genres) {
       anime.genres.forEach(g => {
         const span = document.createElement("span");
-        span.textContent = g.russian;
         span.className = "tag";
+        span.textContent = g.russian;
         tags.appendChild(span);
       });
     }
 
-    // 🎬 ПЛЕЕР
+    /* =========================
+       ПЛЕЕР
+    ========================= */
+
     const player = document.getElementById("player");
 
-    fetch(`/api/player/${animeId}`)
-      .then(res => res.text())
-      .then(html => {
-        const match = html.match(/src="([^"]+)"/);
+    try {
+      const res = await fetch(`/api/player/${animeId}`);
+      const html = await res.text();
 
-        if (match && match[1]) {
-          player.src = match[1];
-        } else {
-          fallbackPlayer(player);
-        }
-      })
-      .catch(() => fallbackPlayer(player));
+      const match = html.match(/src="([^"]+)"/);
+
+      if (match && match[1]) {
+        player.src = match[1];
+      } else {
+        fallbackPlayer();
+      }
+
+    } catch {
+      fallbackPlayer();
+    }
 
   } catch (err) {
     console.error(err);
@@ -138,13 +165,14 @@ async function loadAnime() {
     document.body.innerHTML = `
       <div style="text-align:center; padding:50px;">
         <h1>😢 Ошибка загрузки</h1>
-        <p>Либо блокировка, либо API умер</p>
+        <p>Скорее всего блокировка или API умер</p>
       </div>
     `;
   }
 }
 
-// запуск
+/* ========================= */
+
 loadAnime();
 </script>
 
