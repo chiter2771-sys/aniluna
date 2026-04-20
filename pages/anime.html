@@ -2,179 +2,152 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>AniLuna</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AniLuna — просмотр</title>
   <link rel="stylesheet" href="../css/style.css">
 </head>
-
 <body>
+  <main class="container anime-layout">
+    <a href="/" class="back-link">← Назад в каталог</a>
 
-<div class="container">
+    <h1 id="title">Загрузка...</h1>
 
-  <h1 id="title"></h1>
+    <div class="info-box">
+      <img id="image" alt="Постер аниме">
 
-  <div class="info-box">
-    <img id="image">
+      <div class="info">
+        <p id="desc"></p>
 
-    <div class="info">
-      <p id="desc"></p>
+        <div class="meta">
+          <div>Год: <span id="year"></span></div>
+          <div>Статус: <span id="status"></span></div>
+          <div>Серии: <span id="episodesCount"></span></div>
+          <div>Длительность: <span id="duration"></span></div>
+          <div>Рейтинг: ⭐ <span id="rating"></span></div>
+        </div>
 
-      <div class="meta">
-        <div>Год: <span id="year"></span></div>
-        <div>Статус: <span id="status"></span></div>
-        <div>Серии: <span id="episodesCount"></span></div>
-        <div>Длительность: <span id="duration"></span></div>
-        <div>Рейтинг: ⭐ <span id="rating"></span></div>
+        <div id="tags" class="tags"></div>
       </div>
-
-      <div id="tags" class="tags"></div>
     </div>
-  </div>
 
-  <!-- 🎬 ПЛЕЕР -->
-  <div class="player-box">
-    <iframe id="player" allowfullscreen></iframe>
-  </div>
+    <section class="player-box" aria-label="Плеер">
+      <div class="player-header">
+        <h2>Плеер</h2>
+        <p id="playerHint">Загрузка доступных источников...</p>
+      </div>
+      <div id="playerMount" class="player-mount"></div>
+      <div id="sourceButtons" class="source-buttons"></div>
+    </section>
+  </main>
 
-</div>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const animeId = params.get("id");
 
-<script>
-const params = new URLSearchParams(window.location.search);
-const animeId = params.get("id");
+    function formatStatus(status) {
+      const map = { released: "Вышло", ongoing: "Выходит", anons: "Анонс" };
+      return map[status] || status || "Неизвестно";
+    }
 
-/* =========================
-   ФОРМАТИРОВАНИЕ
-========================= */
+    function formatDate(date) {
+      return date ? date.split("-")[0] : "Неизвестно";
+    }
 
-function formatStatus(status) {
-  const map = {
-    released: "Вышло",
-    ongoing: "Выходит",
-    anons: "Анонс"
-  };
-  return map[status] || status;
-}
+    function cleanDescription(text = "") {
+      return text.replace(/\[.*?\]/g, "").replace(/<\/?[^>]+(>|$)/g, "").trim();
+    }
 
-function formatDate(date) {
-  if (!date) return "Неизвестно";
-  return date.split("-")[0];
-}
+    function renderPlayerEmpty(message) {
+      const mount = document.getElementById("playerMount");
+      mount.innerHTML = `<div class="player-empty">${message}</div>`;
+    }
 
-function cleanDescription(text) {
-  return text
-    .replace(/\[.*?\]/g, "")
-    .replace(/<\/?[^>]+(>|$)/g, "")
-    .trim();
-}
+    function renderIframe(src) {
+      const mount = document.getElementById("playerMount");
+      mount.innerHTML = "";
 
-/* =========================
-   FALLBACK ПЛЕЕРА
-========================= */
+      const iframe = document.createElement("iframe");
+      iframe.src = src;
+      iframe.allowFullscreen = true;
+      iframe.loading = "lazy";
+      iframe.referrerPolicy = "strict-origin-when-cross-origin";
 
-function fallbackPlayer() {
-  const box = document.querySelector(".player-box");
+      mount.appendChild(iframe);
+    }
 
-  box.innerHTML = `
-    <div style="padding:30px; text-align:center;">
-      <h2>😢 Плеер не загрузился</h2>
-      <p>Источник заблокирован или умер</p>
+    function renderSources(sources) {
+      const sourceButtons = document.getElementById("sourceButtons");
+      const hint = document.getElementById("playerHint");
 
-      <a href="https://jut.su/" target="_blank"
-         style="color:#9f7aea; font-size:18px;">
-         👉 Смотреть на Jut.su
-      </a>
-    </div>
-  `;
-}
+      sourceButtons.innerHTML = "";
 
-/* =========================
-   ЗАГРУЗКА АНИМЕ
-========================= */
+      if (!sources || !sources.length) {
+        hint.textContent = "Доступных легальных embed-источников пока нет.";
+        renderPlayerEmpty("Для этого тайтла нет доступного легального плеера. Добавь свои лицензионные источники на сервере.");
+        return;
+      }
 
-async function loadAnime() {
-  try {
-    const res = await fetch(`/api/anime/${animeId}`);
-    if (!res.ok) throw new Error("API error");
+      hint.textContent = "Выбери источник:";
+      renderIframe(sources[0].embedUrl);
 
-    const anime = await res.json();
+      sources.forEach((source, index) => {
+        const btn = document.createElement("button");
+        btn.className = "source-btn" + (index === 0 ? " active" : "");
+        btn.textContent = source.label;
 
-    // 🔥 данные
-    document.getElementById("title").textContent =
-      anime.title || "Без названия";
+        btn.onclick = () => {
+          document.querySelectorAll(".source-btn").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          renderIframe(source.embedUrl);
+        };
 
-    document.getElementById("image").src =
-      anime.image || "";
-
-    document.getElementById("desc").textContent =
-      anime.description
-        ? cleanDescription(anime.description)
-        : "Описание отсутствует";
-
-    document.getElementById("year").textContent =
-      formatDate(anime.aired_on);
-
-    document.getElementById("status").textContent =
-      formatStatus(anime.status);
-
-    document.getElementById("episodesCount").textContent =
-      anime.episodes || "?";
-
-    document.getElementById("duration").textContent =
-      (anime.duration || "?") + " мин";
-
-    document.getElementById("rating").textContent =
-      anime.score || "?";
-
-    // 🎭 жанры
-    const tags = document.getElementById("tags");
-    tags.innerHTML = "";
-
-    if (anime.genres) {
-      anime.genres.forEach(g => {
-        const span = document.createElement("span");
-        span.className = "tag";
-        span.textContent = g.russian;
-        tags.appendChild(span);
+        sourceButtons.appendChild(btn);
       });
     }
 
-    /* =========================
-       ПЛЕЕР
-    ========================= */
+    async function loadAnime() {
+      try {
+        const [animeRes, playerRes] = await Promise.all([
+          fetch(`/api/anime/${animeId}`),
+          fetch(`/api/player/${animeId}`)
+        ]);
 
-    const player = document.getElementById("player");
+        if (!animeRes.ok) throw new Error("Anime API error");
 
-    try {
-      const res = await fetch(`/api/player/${animeId}`);
-      const html = await res.text();
+        const anime = await animeRes.json();
+        const playerData = playerRes.ok ? await playerRes.json() : { sources: [] };
 
-      const match = html.match(/src="([^"]+)"/);
+        document.getElementById("title").textContent = anime.title || "Без названия";
+        document.getElementById("image").src = anime.image || "";
+        document.getElementById("desc").textContent = anime.description ? cleanDescription(anime.description) : "Описание отсутствует";
+        document.getElementById("year").textContent = formatDate(anime.aired_on);
+        document.getElementById("status").textContent = formatStatus(anime.status);
+        document.getElementById("episodesCount").textContent = anime.episodes || "?";
+        document.getElementById("duration").textContent = (anime.duration || "?") + " мин";
+        document.getElementById("rating").textContent = anime.score || "?";
 
-      if (match && match[1]) {
-        player.src = match[1];
-      } else {
-        fallbackPlayer();
+        const tags = document.getElementById("tags");
+        tags.innerHTML = "";
+        (anime.genres || []).forEach((genre) => {
+          const span = document.createElement("span");
+          span.className = "tag";
+          span.textContent = genre.russian || genre.name;
+          tags.appendChild(span);
+        });
+
+        renderSources(playerData.sources || []);
+      } catch (error) {
+        console.error(error);
+        document.body.innerHTML = `
+          <div class="error-screen">
+            <h1>Ошибка загрузки</h1>
+            <p>Не удалось получить данные по аниме.</p>
+          </div>
+        `;
       }
-
-    } catch {
-      fallbackPlayer();
     }
 
-  } catch (err) {
-    console.error(err);
-
-    document.body.innerHTML = `
-      <div style="text-align:center; padding:50px;">
-        <h1>😢 Ошибка загрузки</h1>
-        <p>Скорее всего блокировка или API умер</p>
-      </div>
-    `;
-  }
-}
-
-/* ========================= */
-
-loadAnime();
-</script>
-
+    loadAnime();
+  </script>
 </body>
 </html>
