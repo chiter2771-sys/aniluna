@@ -7,35 +7,42 @@
   <link rel="stylesheet" href="../css/style.css">
 </head>
 <body>
-  <header class="topbar">
-    <div class="container topbar-inner">
-      <a href="/" class="logo-link"><span class="logo">AniLuna</span></a>
+  <header class="site-header">
+    <div class="container topbar">
+      <a href="/" class="logo">AniLuna</a>
 
-      <div class="topbar-search">
+      <div class="header-search-wrap">
         <input type="text" id="search" placeholder="Поиск аниме..." aria-label="Поиск аниме">
       </div>
 
-      <nav class="topbar-nav">
-        <a href="/" class="nav-link">Главная</a>
+      <nav class="header-links">
+        <a href="/">Главная</a>
       </nav>
     </div>
   </header>
 
-  <main class="container page-content">
-    <section class="filters-card">
+  <main class="container page-space">
+    <section class="hero">
       <h1>Каталог аниме</h1>
-      <p>Фильтруй по жанру, году, статусу и типу.</p>
+      <p>Фильтруй по жанру, году, статусу и типу — как на больших каталогах.</p>
 
-      <div class="filter-row">
-        <select id="genreFilter"><option value="">Жанр: любой</option></select>
-        <select id="yearFilter"><option value="">Год: любой</option></select>
-        <select id="statusFilter">
-          <option value="">Статус: любой</option>
+      <div class="filters-grid">
+        <select id="filterGenre"><option value="">Все жанры</option></select>
+        <select id="filterYear"><option value="">Все годы</option></select>
+        <select id="filterStatus">
+          <option value="">Любой статус</option>
           <option value="released">Вышло</option>
           <option value="ongoing">Выходит</option>
           <option value="anons">Анонс</option>
         </select>
-        <select id="kindFilter"><option value="">Тип: любой</option></select>
+        <select id="filterKind">
+          <option value="">Любой тип</option>
+          <option value="tv">TV</option>
+          <option value="movie">Фильм</option>
+          <option value="ova">OVA</option>
+          <option value="ona">ONA</option>
+          <option value="special">Special</option>
+        </select>
       </div>
 
       <div id="genres" class="genres"></div>
