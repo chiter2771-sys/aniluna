@@ -127,9 +127,74 @@ function renderGenreChips(genres) {
       document.getElementById("filterGenre").value = state.chipGenre;
       applyFilters();
     };
-
     container.appendChild(btn);
   });
+
+  container.innerHTML = "";
+
+  const allBtn = document.createElement("button");
+  allBtn.className = "genre-btn active";
+  allBtn.textContent = "Все";
+  allBtn.onclick = () => {
+    activeGenre = null;
+    document.querySelectorAll(".genre-btn").forEach((b) => b.classList.remove("active"));
+    allBtn.classList.add("active");
+    applyFilters();
+  };
+  container.appendChild(allBtn);
+
+  Array.from(genres)
+    .sort((a, b) => a.localeCompare(b, "ru"))
+    .slice(0, 20)
+    .forEach((genre) => {
+      const btn = document.createElement("button");
+      btn.className = "genre-btn";
+      btn.textContent = genre;
+
+      btn.onclick = () => {
+        activeGenre = genre;
+        document.querySelectorAll(".genre-btn").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        applyFilters();
+      };
+
+      container.appendChild(btn);
+    });
+}
+
+function applyFilters() {
+  const value = document.getElementById("search").value.trim().toLowerCase();
+
+  const filtered = allAnime.filter((anime) => {
+    const matchesSearch = getTitle(anime).toLowerCase().includes(value);
+    const matchesGenre = !activeGenre || (anime.genres || []).some((g) => g.russian === activeGenre);
+    return matchesSearch && matchesGenre;
+  });
+
+  renderAnime(filtered);
+}
+
+function applyFilters() {
+  state.search = document.getElementById("search").value.trim().toLowerCase();
+  state.genre = document.getElementById("filterGenre").value;
+  state.year = document.getElementById("filterYear").value;
+  state.status = document.getElementById("filterStatus").value;
+  state.kind = document.getElementById("filterKind").value;
+
+  const filtered = allAnime.filter((anime) => {
+    const title = getTitle(anime).toLowerCase();
+
+    const matchesSearch = title.includes(state.search);
+    const matchesGenre = !state.genre || (anime.genres || []).some((g) => g.russian === state.genre);
+    const matchesYear = !state.year || anime.aired_on?.startsWith(state.year);
+    const matchesStatus = !state.status || anime.status === state.status;
+    const matchesKind = !state.kind || anime.kind === state.kind;
+
+    return matchesSearch && matchesGenre && matchesYear && matchesStatus && matchesKind;
+  });
+
+  renderAnime(filtered);
+  renderGenreChips([...new Set(allAnime.flatMap((anime) => (anime.genres || []).map((g) => g.russian).filter(Boolean)))].sort((a, b) => a.localeCompare(b, "ru")));
 }
 
 function applyFilters() {

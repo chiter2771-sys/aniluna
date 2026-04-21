@@ -282,6 +282,10 @@ select:focus {
   text-align: center;
   color: var(--muted);
 }
+.mini-card img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; }
+.mini-title { padding: 8px 8px 0; font-weight: 700; font-size: 14px; }
+.mini-sub { color: var(--muted); font-size: 12px; padding: 4px 8px 8px; }
+.small-empty, .empty-state, .error-screen { color: var(--muted); text-align: center; padding: 24px; }
 
 .age-modal-overlay {
   position: fixed;
@@ -315,6 +319,8 @@ select:focus {
   .filters-grid { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
   .meta { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
 }
+.btn-primary { cursor: pointer; background: linear-gradient(135deg, #3b82f6, #8b5cf6); border: none; }
+.btn-secondary { background: rgba(16, 27, 49, .9); }
 
 @media (max-width: 760px) {
   .big-info { grid-template-columns: 1fr; }
