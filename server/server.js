@@ -1,7 +1,6 @@
 const express = require("express");
 const path = require("path");
 const axios = require("axios");
-const cheerio = require("cheerio");
 const cors = require("cors");
 
 const app = express();
@@ -10,21 +9,39 @@ const root = path.join(__dirname, "..");
 app.use(cors());
 app.use(express.static(root));
 
-/* =========================
-   КЭШ
-========================= */
-
 const cache = {
-  list: null,
-  listTime: 0,
-  anime: {}
+  list: {},
+  anime: {},
+  player: {},
+  chars: {},
+  recs: {}
 };
 
-const CACHE_TIME = 1000 * 60 * 10; // 10 минут
+const CACHE_TIME = 1000 * 60 * 10;
 
-/* =========================
-   СТРАНИЦЫ
-========================= */
+function setCache(bucket, key, data) {
+  bucket[key] = { data, time: Date.now() };
+}
+
+function getCache(bucket, key) {
+  const cached = bucket[key];
+  if (!cached) return null;
+  if (Date.now() - cached.time > CACHE_TIME) return null;
+  return cached.data;
+}
+
+function toYouTubeEmbed(url = "") {
+  if (!url) return "";
+
+  const short = url.match(/youtu\.be\/([\w-]+)/i);
+  if (short) return `https://www.youtube.com/embed/${short[1]}`;
+
+  const regular = url.match(/[?&]v=([\w-]+)/i);
+  if (regular) return `https://www.youtube.com/embed/${regular[1]}`;
+
+  if (url.includes("youtube.com/embed/")) return url;
+  return "";
+}
 
 app.get("/", (req, res) => {
   res.sendFile(path.join(root, "html", "index.html"));
@@ -34,127 +51,158 @@ app.get("/title", (req, res) => {
   res.sendFile(path.join(root, "pages", "anime.html"));
 });
 
-/* =========================
-   API: СПИСОК
-========================= */
-
 app.get("/api/list", async (req, res) => {
   try {
-    if (cache.list && Date.now() - cache.listTime < CACHE_TIME) {
-      console.log("📦 list из кеша");
-      return res.json(cache.list);
-    }
+    const page = Number(req.query.page || 1);
+    const limit = Number(req.query.limit || 50);
+    const order = String(req.query.order || "ranked");
+    const key = `${page}:${limit}:${order}`;
 
-    const response = await axios.get(
-      "https://shikimori.one/api/animes?limit=50&order=popularity",
-      {
-        headers: { "User-Agent": "Mozilla/5.0" },
-        timeout: 7000
-      }
-    );
+    const cached = getCache(cache.list, key);
+    if (cached) return res.json(cached);
 
-    cache.list = response.data;
-    cache.listTime = Date.now();
+    const response = await axios.get("https://shikimori.one/api/animes", {
+      params: { page, limit, order },
+      headers: { "User-Agent": "Mozilla/5.0" },
+      timeout: 9000
+    });
 
-    console.log("🌐 list с API");
-
-    res.json(response.data);
-
+    setCache(cache.list, key, response.data);
+    return res.json(response.data);
   } catch (err) {
-    console.log("❌ Ошибка списка:", err.message);
-
-    if (cache.list) {
-      console.log("⚠️ отдаю старый кеш");
-      return res.json(cache.list);
-    }
-
-    res.status(500).json({ error: "API умер" });
+    console.error("Ошибка списка:", err.message);
+    return res.status(500).json({ error: "Не удалось загрузить список" });
   }
 });
-
-/* =========================
-   API: АНИМЕ
-========================= */
 
 app.get("/api/anime/:id", async (req, res) => {
   try {
     const id = req.params.id;
 
-    if (cache.anime[id] && Date.now() - cache.anime[id].time < CACHE_TIME) {
-      console.log("📦 anime из кеша:", id);
-      return res.json(cache.anime[id].data);
-    }
+    const cached = getCache(cache.anime, id);
+    if (cached) return res.json(cached);
 
-    const animeRes = await axios.get(
-      `https://shikimori.one/api/animes/${id}`,
-      {
-        headers: { "User-Agent": "Mozilla/5.0" },
-        timeout: 7000
-      }
-    );
+    const animeRes = await axios.get(`https://shikimori.one/api/animes/${id}`, {
+      headers: { "User-Agent": "Mozilla/5.0" },
+      timeout: 9000
+    });
 
     const anime = animeRes.data;
-
-    // JUT (не критично)
-    let episodes = [];
-
-    try {
-      const query = anime.name.replace(/\s+/g, "-").toLowerCase();
-      const url = `https://jut.su/${query}/`;
-
-      const { data } = await axios.get(url, {
-        headers: { "User-Agent": "Mozilla/5.0" }
-      });
-
-      const $ = cheerio.load(data);
-
-      $(".short-btn").each((i, el) => {
-        const link = $(el).attr("href");
-        if (link) episodes.push("https://jut.su" + link);
-      });
-
-    } catch {
-      console.log("⚠️ JUT не доступен");
-    }
-
     const result = {
+      id: anime.id,
       title: anime.russian || anime.name,
-      image: "https://shikimori.one" + anime.image.original,
+      image: anime.image?.original ? `https://shikimori.one${anime.image.original}` : "",
       description: anime.description,
       aired_on: anime.aired_on,
       status: anime.status,
       episodes: anime.episodes,
       duration: anime.duration,
       score: anime.score,
-      genres: anime.genres,
-      episodesList: episodes
+      genres: anime.genres || [],
+      kind: anime.kind,
+      rating: anime.rating,
+      studios: anime.studios || []
     };
 
-    cache.anime[id] = {
-      data: result,
-      time: Date.now()
-    };
-
-    res.json(result);
-
+    setCache(cache.anime, id, result);
+    return res.json(result);
   } catch (err) {
-    console.log("❌ Ошибка anime:", err.message);
-    res.status(500).json({ error: "Ошибка аниме" });
+    console.error("Ошибка anime:", err.message);
+    return res.status(500).json({ error: "Ошибка получения аниме" });
   }
 });
 
-/* =========================
-   ПЛЕЕР (ОТКЛЮЧАЕМ ЭТУ ХЕРНЮ)
-========================= */
+app.get("/api/player/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
 
-app.get("/api/player/:id", (req, res) => {
-  res.status(404).send("Плеер отключен");
+    const cached = getCache(cache.player, id);
+    if (cached) return res.json(cached);
+
+    const response = await axios.get(`https://shikimori.one/api/animes/${id}/videos`, {
+      headers: { "User-Agent": "Mozilla/5.0" },
+      timeout: 9000
+    });
+
+    const sources = (response.data || [])
+      .map((item, idx) => {
+        const watchUrl = item.url || item.player_url || "";
+        const embedUrl = toYouTubeEmbed(item.url || "") || item.player_url || "";
+
+        return {
+          label: `${(item.kind || "video").toUpperCase()} ${idx + 1}`,
+          embedUrl,
+          watchUrl
+        };
+      })
+      .filter((item) => item.embedUrl || item.watchUrl)
+      .slice(0, 8);
+
+    const payload = { sources };
+    setCache(cache.player, id, payload);
+    return res.json(payload);
+  } catch (err) {
+    console.error("Ошибка player:", err.message);
+    return res.json({ sources: [] });
+  }
 });
 
-/* ========================= */
+app.get("/api/characters/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+    const cached = getCache(cache.chars, id);
+    if (cached) return res.json(cached);
+
+    const response = await axios.get(`https://shikimori.one/api/animes/${id}/roles`, {
+      headers: { "User-Agent": "Mozilla/5.0" },
+      timeout: 9000
+    });
+
+    const chars = (response.data || [])
+      .filter((role) => role.character)
+      .slice(0, 12)
+      .map((role) => ({
+        name: role.character.russian || role.character.name,
+        role: role.roles_russian?.[0] || role.roles_en?.[0] || "Персонаж",
+        image: role.character.image?.original ? `https://shikimori.one${role.character.image.original}` : ""
+      }));
+
+    setCache(cache.chars, id, chars);
+    return res.json(chars);
+  } catch (err) {
+    console.error("Ошибка characters:", err.message);
+    return res.json([]);
+  }
+});
+
+app.get("/api/recommendations/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+    const cached = getCache(cache.recs, id);
+    if (cached) return res.json(cached);
+
+    const response = await axios.get(`https://shikimori.one/api/animes/${id}/similar`, {
+      headers: { "User-Agent": "Mozilla/5.0" },
+      timeout: 9000
+    });
+
+    const recs = (response.data || []).slice(0, 12).map((item) => ({
+      id: item.id,
+      title: item.russian || item.name,
+      year: item.aired_on ? item.aired_on.slice(0, 4) : "",
+      image: item.image?.original ? `https://shikimori.one${item.image.original}` : ""
+    }));
+
+    setCache(cache.recs, id, recs);
+    return res.json(recs);
+  } catch (err) {
+    console.error("Ошибка recommendations:", err.message);
+    return res.json([]);
+  }
+});
 
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("🔥 Сервер запущен на порту " + PORT);
+  console.log(`Сервер запущен на порту ${PORT}`);
 });

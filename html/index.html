@@ -2,45 +2,51 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AniLuna</title>
   <link rel="stylesheet" href="../css/style.css">
 </head>
-
 <body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a href="/" class="logo-link"><span class="logo">AniLuna</span></a>
 
-<header>
-  <div class="container">
-    <div class="logo">AniLuna</div>
-  </div>
-</header>
+      <div class="topbar-search">
+        <input type="text" id="search" placeholder="Поиск аниме..." aria-label="Поиск аниме">
+      </div>
 
-<input type="text" id="search" placeholder="Поиск аниме...">
+      <nav class="topbar-nav">
+        <a href="/" class="nav-link">Главная</a>
+      </nav>
+    </div>
+  </header>
 
-<div class="container">
-  <div id="grid" class="grid"></div>
-</div>
+  <main class="container page-content">
+    <section class="filters-card">
+      <h1>Каталог аниме</h1>
+      <p>Фильтруй по жанру, году, статусу и типу.</p>
 
-<script src="../js/anime.js"></script>
+      <div class="filter-row">
+        <select id="genreFilter"><option value="">Жанр: любой</option></select>
+        <select id="yearFilter"><option value="">Год: любой</option></select>
+        <select id="statusFilter">
+          <option value="">Статус: любой</option>
+          <option value="released">Вышло</option>
+          <option value="ongoing">Выходит</option>
+          <option value="anons">Анонс</option>
+        </select>
+        <select id="kindFilter"><option value="">Тип: любой</option></select>
+      </div>
 
-<script>
-const grid = document.getElementById("grid");
+      <div id="genres" class="genres"></div>
+    </section>
 
-animeList.forEach(anime => {
-  const card = document.createElement("div");
-  card.className = "card";
+    <section>
+      <div id="grid" class="grid"></div>
+      <button id="loadMore" class="load-more">Загрузить ещё</button>
+    </section>
+  </main>
 
-  card.innerHTML = `
-    <img src="${anime.image}">
-    <div class="title">${anime.title}</div>
-  `;
-
-  card.onclick = () => {
-    window.location.href = `/pages/anime.html?id=${anime.id}`;
-  };
-<div id="genres" class="genres"></div>
-  grid.appendChild(card);
-});
-</script>
-
+  <script src="../js/anime.js"></script>
 </body>
 </html>
