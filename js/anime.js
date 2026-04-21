@@ -1,61 +1,55 @@
-let allAnime = [];
-let currentPage = 1;
-let hasMore = true;
-let loading = false;
-
 const state = {
-  search: "",
-  genre: "",
-  year: "",
-  status: "",
-  kind: "",
-  chipGenre: ""
+  allAnime: [],
+  page: 1,
+  loading: false,
+  hasMore: true,
+  activeGenre: null
 };
 
-function getTitle(anime) {
-  return anime.russian || anime.name || "Без названия";
+const searchInput = document.getElementById("search");
+const loadMoreBtn = document.getElementById("loadMore");
+
+async function fetchAnimePage(page = 1) {
+  const res = await fetch(`/api/list?page=${page}&limit=50&order=ranked`);
+  if (!res.ok) throw new Error("Ошибка API");
+  return res.json();
 }
 
-function getImage(anime) {
-  return anime.image?.original ? `https://shikimori.one${anime.image.original}` : "";
-}
+async function loadAnimePage() {
+  if (state.loading || !state.hasMore) return;
 
-function isAdultRating(anime) {
-  const rating = (anime.rating || "").toLowerCase();
-  return rating.includes("rx") || rating.includes("r+");
-}
+  state.loading = true;
+  loadMoreBtn.disabled = true;
+  loadMoreBtn.textContent = "Загрузка...";
 
-function renderAnime(list, append = false) {
-  const container = document.getElementById("grid");
-  if (!append) container.innerHTML = "";
-
-  if (!list.length && !append) {
-    container.innerHTML = `
-      <div class="empty-state">
-        <h2>Ничего не найдено</h2>
-        <p>Попробуй изменить фильтры или поисковый запрос.</p>
-let activeGenre = null;
-
-async function loadAnime() {
   try {
-    const res = await fetch("/api/list");
-    if (!res.ok) throw new Error("Ошибка API");
+    const list = await fetchAnimePage(state.page);
 
-    const data = await res.json();
-    allAnime = Array.isArray(data) ? data : [];
+    if (!Array.isArray(list) || list.length === 0) {
+      state.hasMore = false;
+      loadMoreBtn.style.display = "none";
+      return;
+    }
 
-    renderGenres(allAnime);
-    renderAnime(allAnime);
+    state.allAnime.push(...list);
+    state.page += 1;
+
+    hydrateFilters(state.allAnime);
+    applyFilters();
   } catch (err) {
     console.error("Ошибка загрузки:", err.message);
-
     document.getElementById("grid").innerHTML = `
       <div class="empty-state">
         <h2>😢 Не удалось загрузить каталог</h2>
-        <p>Проверь подключение к серверу и доступность API.</p>
+        <p>Проверь доступность сервера и внешнего API.</p>
       </div>
     `;
-    return;
+  } finally {
+    state.loading = false;
+    if (state.hasMore) {
+      loadMoreBtn.disabled = false;
+      loadMoreBtn.textContent = "Загрузить ещё";
+    }
   }
 
   list.forEach((anime) => {
@@ -75,6 +69,14 @@ function getImage(anime) {
   return anime.image?.original ? `https://shikimori.one${anime.image.original}` : "";
 }
 
+function getTitle(anime) {
+  return anime.russian || anime.name || "Без названия";
+}
+
+function getImage(anime) {
+  return anime.image?.original ? `https://shikimori.one${anime.image.original}` : "";
+}
+
 function renderAnime(list) {
   const container = document.getElementById("grid");
   container.innerHTML = "";
@@ -83,7 +85,7 @@ function renderAnime(list) {
     container.innerHTML = `
       <div class="empty-state">
         <h2>Ничего не найдено</h2>
-        <p>Попробуй изменить поисковый запрос или жанр.</p>
+        <p>Измени параметры поиска или фильтров.</p>
       </div>
     `;
     return;
@@ -94,6 +96,7 @@ function renderAnime(list) {
     const image = getImage(anime);
     const rating = anime.score || "?";
     const year = anime.aired_on ? anime.aired_on.slice(0, 4) : "—";
+    const age = anime.rating || "";
 
     const card = document.createElement("article");
     card.className = "card";
@@ -101,7 +104,7 @@ function renderAnime(list) {
     card.innerHTML = `
       <div class="card-img">
         <img src="${image}" alt="${title}">
-        ${adultBadge}
+        ${age.startsWith("rx") || age.startsWith("r+") ? '<span class="age-badge">18+</span>' : ""}
       </div>
       <div class="card-overlay">
         <h3>${title}</h3>
@@ -127,18 +130,29 @@ function renderAnime(list) {
   });
 }
 
-function setLoadMoreVisibility() {
-  const btn = document.getElementById("loadMore");
-  btn.style.display = hasMore ? "block" : "none";
-  btn.disabled = loading;
-  btn.textContent = loading ? "Загрузка..." : "Загрузить ещё";
+function uniqueValues(source, getter) {
+  return Array.from(new Set(source.map(getter).filter(Boolean))).sort((a, b) => String(a).localeCompare(String(b), "ru"));
 }
 
-function createOptions(selectId, values, allLabel) {
-  const select = document.getElementById(selectId);
-  const current = select.value;
+function hydrateFilters(animeList) {
+  const genreFilter = document.getElementById("genreFilter");
+  const yearFilter = document.getElementById("yearFilter");
+  const kindFilter = document.getElementById("kindFilter");
 
-  select.innerHTML = `<option value="">${allLabel}</option>`;
+  const genres = uniqueValues(animeList.flatMap((a) => a.genres || []), (g) => g.russian);
+  const years = uniqueValues(animeList, (a) => (a.aired_on ? a.aired_on.slice(0, 4) : ""));
+  const kinds = uniqueValues(animeList, (a) => a.kind);
+
+  fillSelect(genreFilter, genres, "Жанр: любой");
+  fillSelect(yearFilter, years.reverse(), "Год: любой");
+  fillSelect(kindFilter, kinds, "Тип: любой");
+
+  renderGenreChips(genres.slice(0, 16));
+}
+
+function fillSelect(select, values, defaultLabel) {
+  const current = select.value;
+  select.innerHTML = `<option value="">${defaultLabel}</option>`;
 
   values.forEach((value) => {
     const option = document.createElement("option");
@@ -150,41 +164,29 @@ function createOptions(selectId, values, allLabel) {
   if (values.includes(current)) select.value = current;
 }
 
-function renderDynamicFilters() {
-  const genres = [...new Set(allAnime.flatMap((anime) => (anime.genres || []).map((g) => g.russian).filter(Boolean)))].sort((a, b) => a.localeCompare(b, "ru"));
-  const years = [...new Set(allAnime.map((anime) => anime.aired_on?.slice(0, 4)).filter(Boolean))].sort((a, b) => Number(b) - Number(a));
-
-  createOptions("filterGenre", genres, "Все жанры");
-  createOptions("filterYear", years, "Все годы");
-
-  renderGenreChips(genres);
-}
-
 function renderGenreChips(genres) {
   const container = document.getElementById("genres");
   container.innerHTML = "";
 
-  const chips = ["Все", ...genres.slice(0, 16)];
+  const allBtn = document.createElement("button");
+  allBtn.className = `genre-btn ${state.activeGenre ? "" : "active"}`;
+  allBtn.textContent = "Все";
+  allBtn.onclick = () => {
+    state.activeGenre = null;
+    applyFilters();
+  };
+  container.appendChild(allBtn);
 
-  chips.forEach((genre) => {
+  genres.forEach((genre) => {
     const btn = document.createElement("button");
-    btn.className = "genre-btn" + ((genre === "Все" && !state.chipGenre) || genre === state.chipGenre ? " active" : "");
+    btn.className = `genre-btn ${state.activeGenre === genre ? "active" : ""}`;
     btn.textContent = genre;
-
     btn.onclick = () => {
-      state.chipGenre = genre === "Все" ? "" : genre;
-      document.getElementById("filterGenre").value = state.chipGenre;
+      state.activeGenre = genre;
+      document.getElementById("genreFilter").value = genre;
       applyFilters();
     };
-function renderGenres(animeList) {
-  const container = document.getElementById("genres");
-  if (!container) return;
-
-  const genres = new Set();
-  animeList.forEach((anime) => {
-    (anime.genres || []).forEach((genre) => {
-      if (genre?.russian) genres.add(genre.russian);
-    });
+    container.appendChild(btn);
   });
 
   container.innerHTML = "";
@@ -323,7 +325,33 @@ if (querySearch) {
   state.search = querySearch.toLowerCase();
 }
 
-loadPage(1);
-document.getElementById("search").addEventListener("input", applyFilters);
+function applyFilters() {
+  const searchValue = searchInput.value.trim().toLowerCase();
+  const genreValue = document.getElementById("genreFilter").value || state.activeGenre;
+  const yearValue = document.getElementById("yearFilter").value;
+  const statusValue = document.getElementById("statusFilter").value;
+  const kindValue = document.getElementById("kindFilter").value;
 
-loadAnime();
+  state.activeGenre = genreValue || null;
+
+  const filtered = state.allAnime.filter((anime) => {
+    const matchesSearch = getTitle(anime).toLowerCase().includes(searchValue);
+    const matchesGenre = !genreValue || (anime.genres || []).some((g) => g.russian === genreValue);
+    const matchesYear = !yearValue || (anime.aired_on || "").startsWith(yearValue);
+    const matchesStatus = !statusValue || anime.status === statusValue;
+    const matchesKind = !kindValue || anime.kind === kindValue;
+    return matchesSearch && matchesGenre && matchesYear && matchesStatus && matchesKind;
+  });
+
+  renderGenreChips(uniqueValues(state.allAnime.flatMap((a) => a.genres || []), (g) => g.russian).slice(0, 16));
+  renderAnime(filtered);
+}
+
+searchInput.addEventListener("input", applyFilters);
+document.getElementById("genreFilter").addEventListener("change", applyFilters);
+document.getElementById("yearFilter").addEventListener("change", applyFilters);
+document.getElementById("statusFilter").addEventListener("change", applyFilters);
+document.getElementById("kindFilter").addEventListener("change", applyFilters);
+loadMoreBtn.addEventListener("click", loadAnimePage);
+
+loadAnimePage();

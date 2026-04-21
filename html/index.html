@@ -7,57 +7,38 @@
   <link rel="stylesheet" href="../css/style.css">
 </head>
 <body>
-  <header class="site-header">
-    <div class="container topbar">
-      <a href="/" class="logo">AniLuna</a>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a href="/" class="logo-link"><span class="logo">AniLuna</span></a>
 
-      <div class="header-search-wrap">
+      <div class="topbar-search">
         <input type="text" id="search" placeholder="Поиск аниме..." aria-label="Поиск аниме">
       </div>
 
-      <nav class="header-links">
-        <a href="/">Главная</a>
+      <nav class="topbar-nav">
+        <a href="/" class="nav-link">Главная</a>
       </nav>
     </div>
   </header>
 
-  <main class="container page-space">
-    <section class="hero">
+  <main class="container page-content">
+    <section class="filters-card">
       <h1>Каталог аниме</h1>
-      <p>Фильтруй по жанру, году, статусу и типу — как на больших каталогах.</p>
+      <p>Фильтруй по жанру, году, статусу и типу.</p>
 
-      <div class="filters-grid">
-        <select id="filterGenre"><option value="">Все жанры</option></select>
-        <select id="filterYear"><option value="">Все годы</option></select>
-        <select id="filterStatus">
-          <option value="">Любой статус</option>
+      <div class="filter-row">
+        <select id="genreFilter"><option value="">Жанр: любой</option></select>
+        <select id="yearFilter"><option value="">Год: любой</option></select>
+        <select id="statusFilter">
+          <option value="">Статус: любой</option>
           <option value="released">Вышло</option>
           <option value="ongoing">Выходит</option>
           <option value="anons">Анонс</option>
         </select>
-        <select id="filterKind">
-          <option value="">Любой тип</option>
-          <option value="tv">TV</option>
-          <option value="movie">Фильм</option>
-          <option value="ova">OVA</option>
-          <option value="ona">ONA</option>
-          <option value="special">Special</option>
-        </select>
+        <select id="kindFilter"><option value="">Тип: любой</option></select>
       </div>
 
       <div id="genres" class="genres"></div>
-    <div class="container header-row">
-      <div class="logo">AniLuna</div>
-      <div class="header-subtitle">Каталог аниме с современным интерфейсом и легальными источниками</div>
-    </div>
-  </header>
-
-  <main class="container">
-    <section class="hero">
-      <h1>Смотри аниме в удобном интерфейсе</h1>
-      <p>Быстрый поиск, фильтрация по жанрам и современная карточная сетка.</p>
-      <input type="text" id="search" placeholder="Поиск аниме по названию..." aria-label="Поиск аниме">
-      <div id="genres" class="genres" aria-label="Фильтр по жанрам"></div>
     </section>
 
     <section>
