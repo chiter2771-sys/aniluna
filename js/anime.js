@@ -2,6 +2,7 @@ const homeState = {
   all: [],
   filteredGenre: ""
 };
+const FALLBACK_COVER = "https://placehold.co/400x600/0f172a/e2e8f0?text=AniLuna";
 
 const normalize = (text = "") => text
   .toLowerCase()
@@ -26,9 +27,10 @@ function formatEpisodes(anime) {
 }
 
 function renderMiniCard(anime) {
+  const image = getImage(anime) || FALLBACK_COVER;
   return `
     <a class="home-mini" href="pages/anime.html?id=${anime.id}">
-      <img src="${getImage(anime)}" alt="${getTitle(anime)}" loading="lazy" decoding="async">
+      <img src="${image}" alt="${getTitle(anime)}" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${FALLBACK_COVER}'">
       <div class="home-mini-info">
         <strong>${getTitle(anime)}</strong>
         <span>${formatEpisodes(anime)} · ⭐ ${anime.score || "?"}</span>
@@ -40,9 +42,13 @@ function renderMiniCard(anime) {
 function renderRow(title, list) {
   if (!list.length) return "";
   return `
-    <section class="home-row">
+    <section class="home-row" data-scroll-block>
       <h2>${title}</h2>
-      <div class="scroll-row">${list.map(renderMiniCard).join("")}</div>
+      <div class="scroll-row-wrap">
+        <button class="scroll-arrow left" type="button" aria-label="Прокрутить влево">‹</button>
+        <div class="scroll-row">${list.map(renderMiniCard).join("")}</div>
+        <button class="scroll-arrow right" type="button" aria-label="Прокрутить вправо">›</button>
+      </div>
     </section>
   `;
 }
@@ -78,6 +84,14 @@ function renderGenrePanel() {
   });
 }
 
+function appendRow(root, title, list) {
+  const rowMarkup = renderRow(title, list);
+  if (!rowMarkup) return;
+
+  const fragment = document.createRange().createContextualFragment(rowMarkup);
+  root.appendChild(fragment);
+}
+
 function renderHome() {
   const root = document.getElementById("homeSections");
   root.innerHTML = "";
@@ -89,9 +103,9 @@ function renderHome() {
   const recent = [...base].sort((a, b) => new Date(b.aired_on || 0) - new Date(a.aired_on || 0)).slice(0, 12);
   const upcoming = base.filter((a) => a.status === "anons").slice(0, 12);
 
-  root.innerHTML += renderRow("Популярное", popular);
-  root.innerHTML += renderRow("Недавно опубликованные", recent);
-  root.innerHTML += renderRow("Скоро выйдут", upcoming);
+  appendRow(root, "Популярное", popular);
+  appendRow(root, "Недавно опубликованные", recent);
+  appendRow(root, "Скоро выйдут", upcoming);
 
   const romance = base.filter((a) => (a.genres || []).some((g) => normalize(g.russian || g.name).includes("роман"))).slice(0, 12);
   const comedy = base.filter((a) => (a.genres || []).some((g) => normalize(g.russian || g.name).includes("комед"))).slice(0, 12);
@@ -100,9 +114,28 @@ function renderHome() {
     return n.includes("экшен") || n.includes("боев");
   })).slice(0, 12);
 
-  root.innerHTML += renderRow("Романтика", romance);
-  root.innerHTML += renderRow("Комедия", comedy);
-  root.innerHTML += renderRow("Боевик", action);
+  appendRow(root, "Романтика", romance);
+  appendRow(root, "Комедия", comedy);
+  appendRow(root, "Боевик", action);
+  setupHorizontalScrollers(root);
+}
+
+function setupHorizontalScrollers(scope = document) {
+  scope.querySelectorAll("[data-scroll-block]").forEach((block) => {
+    const row = block.querySelector(".scroll-row, .h-scroll");
+    const left = block.querySelector(".scroll-arrow.left");
+    const right = block.querySelector(".scroll-arrow.right");
+    if (!row || !left || !right) return;
+
+    const scrollByCard = (direction) => {
+      const card = row.querySelector(".home-mini, .mini-card");
+      const cardWidth = card ? card.getBoundingClientRect().width : 220;
+      row.scrollBy({ left: direction * (cardWidth + 12), behavior: "smooth" });
+    };
+
+    left.onclick = () => scrollByCard(-1);
+    right.onclick = () => scrollByCard(1);
+  });
 }
 
 function renderBanner() {
