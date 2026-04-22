@@ -78,6 +78,14 @@ function renderGenrePanel() {
   });
 }
 
+function appendRow(root, title, list) {
+  const rowMarkup = renderRow(title, list);
+  if (!rowMarkup) return;
+
+  const fragment = document.createRange().createContextualFragment(rowMarkup);
+  root.appendChild(fragment);
+}
+
 function renderHome() {
   const root = document.getElementById("homeSections");
   root.innerHTML = "";
@@ -89,9 +97,9 @@ function renderHome() {
   const recent = [...base].sort((a, b) => new Date(b.aired_on || 0) - new Date(a.aired_on || 0)).slice(0, 12);
   const upcoming = base.filter((a) => a.status === "anons").slice(0, 12);
 
-  root.innerHTML += renderRow("Популярное", popular);
-  root.innerHTML += renderRow("Недавно опубликованные", recent);
-  root.innerHTML += renderRow("Скоро выйдут", upcoming);
+  appendRow(root, "Популярное", popular);
+  appendRow(root, "Недавно опубликованные", recent);
+  appendRow(root, "Скоро выйдут", upcoming);
 
   const romance = base.filter((a) => (a.genres || []).some((g) => normalize(g.russian || g.name).includes("роман"))).slice(0, 12);
   const comedy = base.filter((a) => (a.genres || []).some((g) => normalize(g.russian || g.name).includes("комед"))).slice(0, 12);
@@ -100,9 +108,9 @@ function renderHome() {
     return n.includes("экшен") || n.includes("боев");
   })).slice(0, 12);
 
-  root.innerHTML += renderRow("Романтика", romance);
-  root.innerHTML += renderRow("Комедия", comedy);
-  root.innerHTML += renderRow("Боевик", action);
+  appendRow(root, "Романтика", romance);
+  appendRow(root, "Комедия", comedy);
+  appendRow(root, "Боевик", action);
 }
 
 function renderBanner() {
