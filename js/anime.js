@@ -1,292 +1,201 @@
-let allAnime = [];
-let currentPage = 1;
-let hasMore = true;
-let loading = false;
+const homeState = { all: [], filteredGenre: "", genres: [] };
+const FALLBACK_POSTER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='600'%3E%3Crect width='100%25' height='100%25' fill='%230c1630'/%3E%3Ctext x='50%25' y='50%25' fill='%2394a3b8' font-size='32' text-anchor='middle' dominant-baseline='middle'%3ENo Poster%3C/text%3E%3C/svg%3E";
 
-const state = {
-  search: "",
-  genre: "",
-  year: "",
-  status: "",
-  kind: "",
-  chipGenre: ""
-};
-
-function getTitle(anime) {
-  return anime.russian || anime.name || "Без названия";
-}
+const normalize = (text = "") => text.toLowerCase().replace(/ё/g, "е").replace(/[^\p{L}\p{N}\s]/gu, "").trim();
+const getTitle = (anime) => anime.russian || anime.name || "Без названия";
 
 function getImage(anime) {
-  return anime.image?.original ? `https://shikimori.one${anime.image.original}` : "";
+  const original = anime.image?.original || anime.image?.preview || anime.image?.x96;
+  return original ? `https://shikimori.one${original}` : FALLBACK_POSTER;
 }
 
-function isAdultRating(anime) {
-  const rating = (anime.rating || "").toLowerCase();
-  return rating.includes("rx") || rating.includes("r+");
+function formatEpisodes(anime) {
+  if (anime.kind === "movie") return "Фильм";
+  if (anime.episodes_aired && anime.episodes) return `${anime.episodes_aired}/${anime.episodes} эп.`;
+  if (anime.episodes) return `${anime.episodes} эп.`;
+  return "? эп.";
 }
 
-function renderAnime(list, append = false) {
-  const container = document.getElementById("grid");
-  if (!append) container.innerHTML = "";
-
-  if (!list.length && !append) {
-    container.innerHTML = `
-      <div class="empty-state">
-        <h2>Ничего не найдено</h2>
-        <p>Попробуй изменить фильтры или поисковый запрос.</p>
+function renderMiniCard(anime) {
+  return `
+    <a class="home-mini" href="pages/anime.html?id=${anime.id}">
+      <img src="${getImage(anime)}" alt="${getTitle(anime)}" loading="lazy" decoding="async" onerror="this.src='${FALLBACK_POSTER}'">
+      <div class="home-mini-info">
+        <strong>${getTitle(anime)}</strong>
+        <span>${formatEpisodes(anime)} · ⭐ ${anime.score || "?"}</span>
       </div>
-    `;
-    return;
-  }
+    </a>
+  `;
+}
 
-  list.forEach((anime) => {
-    const card = document.createElement("article");
-    card.className = "card";
-
-    const title = getTitle(anime);
-    const image = getImage(anime);
-    const year = anime.aired_on ? anime.aired_on.slice(0, 4) : "—";
-    const rating = anime.score || "?";
-    const adultBadge = isAdultRating(anime) ? '<span class="age-badge">18+</span>' : "";
-
-    card.innerHTML = `
-      <div class="card-img">
-        <img src="${image}" alt="${title}">
-        ${adultBadge}
+function makeCarousel(id, title, list) {
+  if (!list.length) return "";
+  return `
+    <section class="home-row">
+      <h2>${title}</h2>
+      <div class="carousel-wrap">
+        <button class="carousel-btn prev" data-target="${id}">‹</button>
+        <div class="scroll-row" id="${id}">${list.map(renderMiniCard).join("")}</div>
+        <button class="carousel-btn next" data-target="${id}">›</button>
       </div>
-      <div class="card-overlay">
-        <h3>${title}</h3>
-        <div class="card-info">
-          <span>⭐ ${rating}</span>
-          <span>${year}</span>
-        </div>
-      </div>
-    `;
-
-    card.onclick = () => {
-      const safeGo = () => (window.location.href = `pages/anime.html?id=${anime.id}`);
-
-      if (isAdultRating(anime) && localStorage.getItem("adult_confirmed") !== "yes") {
-        openAgeModal(safeGo);
-        return;
-      }
-
-      safeGo();
-    };
-
-    container.appendChild(card);
-  });
+    </section>
+  `;
 }
 
-function setLoadMoreVisibility() {
-  const btn = document.getElementById("loadMore");
-  btn.style.display = hasMore ? "block" : "none";
-  btn.disabled = loading;
-  btn.textContent = loading ? "Загрузка..." : "Загрузить ещё";
+function withGenreFilter(list) {
+  if (!homeState.filteredGenre) return list;
+  const needle = normalize(homeState.filteredGenre);
+  return list.filter((anime) => (anime.genres || []).some((g) => normalize(g.russian || g.name).includes(needle)));
 }
 
-function createOptions(selectId, values, allLabel) {
-  const select = document.getElementById(selectId);
-  const current = select.value;
-
-  select.innerHTML = `<option value="">${allLabel}</option>`;
-
-  values.forEach((value) => {
-    const option = document.createElement("option");
-    option.value = value;
-    option.textContent = value;
-    select.appendChild(option);
-  });
-
-  if (values.includes(current)) select.value = current;
-}
-
-function renderDynamicFilters() {
-  const genres = [...new Set(allAnime.flatMap((anime) => (anime.genres || []).map((g) => g.russian).filter(Boolean)))].sort((a, b) => a.localeCompare(b, "ru"));
-  const years = [...new Set(allAnime.map((anime) => anime.aired_on?.slice(0, 4)).filter(Boolean))].sort((a, b) => Number(b) - Number(a));
-
-  createOptions("filterGenre", genres, "Все жанры");
-  createOptions("filterYear", years, "Все годы");
-
-  renderGenreChips(genres);
-}
-
-function renderGenreChips(genres) {
-  const container = document.getElementById("genres");
-  container.innerHTML = "";
-
-  const chips = ["Все", ...genres.slice(0, 16)];
-
-  chips.forEach((genre) => {
-    const btn = document.createElement("button");
-    btn.className = "genre-btn" + ((genre === "Все" && !state.chipGenre) || genre === state.chipGenre ? " active" : "");
-    btn.textContent = genre;
-
+function bindCarousels() {
+  document.querySelectorAll(".carousel-btn").forEach((btn) => {
     btn.onclick = () => {
-      state.chipGenre = genre === "Все" ? "" : genre;
-      document.getElementById("filterGenre").value = state.chipGenre;
-      applyFilters();
+      const row = document.getElementById(btn.dataset.target);
+      if (!row) return;
+      row.scrollBy({ left: btn.classList.contains("next") ? 240 : -240, behavior: "smooth" });
     };
-    container.appendChild(btn);
   });
-
-  container.innerHTML = "";
-
-  const allBtn = document.createElement("button");
-  allBtn.className = "genre-btn active";
-  allBtn.textContent = "Все";
-  allBtn.onclick = () => {
-    activeGenre = null;
-    document.querySelectorAll(".genre-btn").forEach((b) => b.classList.remove("active"));
-    allBtn.classList.add("active");
-    applyFilters();
-  };
-  container.appendChild(allBtn);
-
-  Array.from(genres)
-    .sort((a, b) => a.localeCompare(b, "ru"))
-    .slice(0, 20)
-    .forEach((genre) => {
-      const btn = document.createElement("button");
-      btn.className = "genre-btn";
-      btn.textContent = genre;
-
-      btn.onclick = () => {
-        activeGenre = genre;
-        document.querySelectorAll(".genre-btn").forEach((b) => b.classList.remove("active"));
-        btn.classList.add("active");
-        applyFilters();
-      };
-
-      container.appendChild(btn);
-    });
 }
 
-function applyFilters() {
-  const value = document.getElementById("search").value.trim().toLowerCase();
+function renderHome() {
+  const root = document.getElementById("homeSections");
+  root.innerHTML = "";
 
-  const filtered = allAnime.filter((anime) => {
-    const matchesSearch = getTitle(anime).toLowerCase().includes(value);
-    const matchesGenre = !activeGenre || (anime.genres || []).some((g) => g.russian === activeGenre);
-    return matchesSearch && matchesGenre;
-  });
+  const base = withGenreFilter(homeState.all);
+  const popular = [...base].sort((a, b) => Number(b.score || 0) - Number(a.score || 0)).slice(0, 12);
+  const recent = [...base].sort((a, b) => new Date(b.aired_on || 0) - new Date(a.aired_on || 0)).slice(0, 12);
+  const upcoming = base.filter((a) => a.status === "anons").slice(0, 12);
+  const romance = base.filter((a) => (a.genres || []).some((g) => normalize(g.russian || g.name).includes("роман"))).slice(0, 12);
 
-  renderAnime(filtered);
+  root.innerHTML += makeCarousel("row-popular", "Популярное", popular);
+  root.innerHTML += makeCarousel("row-recent", "Недавно опубликованные", recent);
+  root.innerHTML += makeCarousel("row-upcoming", "Скоро выйдут", upcoming);
+  root.innerHTML += makeCarousel("row-romance", "Романтика", romance);
+
+  bindCarousels();
 }
 
-function applyFilters() {
-  state.search = document.getElementById("search").value.trim().toLowerCase();
-  state.genre = document.getElementById("filterGenre").value;
-  state.year = document.getElementById("filterYear").value;
-  state.status = document.getElementById("filterStatus").value;
-  state.kind = document.getElementById("filterKind").value;
+function renderBanner() {
+  const banner = document.getElementById("recentBanner");
+  const recent = [...homeState.all].sort((a, b) => new Date(b.aired_on || 0) - new Date(a.aired_on || 0))[0];
+  if (!recent) return;
 
-  const filtered = allAnime.filter((anime) => {
-    const title = getTitle(anime).toLowerCase();
-
-    const matchesSearch = title.includes(state.search);
-    const matchesGenre = !state.genre || (anime.genres || []).some((g) => g.russian === state.genre);
-    const matchesYear = !state.year || anime.aired_on?.startsWith(state.year);
-    const matchesStatus = !state.status || anime.status === state.status;
-    const matchesKind = !state.kind || anime.kind === state.kind;
-
-    return matchesSearch && matchesGenre && matchesYear && matchesStatus && matchesKind;
-  });
-
-  renderAnime(filtered);
-  renderGenreChips([...new Set(allAnime.flatMap((anime) => (anime.genres || []).map((g) => g.russian).filter(Boolean)))].sort((a, b) => a.localeCompare(b, "ru")));
-}
-
-function applyFilters() {
-  state.search = document.getElementById("search").value.trim().toLowerCase();
-  state.genre = document.getElementById("filterGenre").value;
-  state.year = document.getElementById("filterYear").value;
-  state.status = document.getElementById("filterStatus").value;
-  state.kind = document.getElementById("filterKind").value;
-
-  const filtered = allAnime.filter((anime) => {
-    const title = getTitle(anime).toLowerCase();
-
-    const matchesSearch = title.includes(state.search);
-    const matchesGenre = !state.genre || (anime.genres || []).some((g) => g.russian === state.genre);
-    const matchesYear = !state.year || anime.aired_on?.startsWith(state.year);
-    const matchesStatus = !state.status || anime.status === state.status;
-    const matchesKind = !state.kind || anime.kind === state.kind;
-
-    return matchesSearch && matchesGenre && matchesYear && matchesStatus && matchesKind;
-  });
-
-  renderAnime(filtered);
-  renderGenreChips([...new Set(allAnime.flatMap((anime) => (anime.genres || []).map((g) => g.russian).filter(Boolean)))].sort((a, b) => a.localeCompare(b, "ru")));
-}
-
-async function loadPage(page = 1) {
-  if (loading || !hasMore) return;
-  loading = true;
-  setLoadMoreVisibility();
-
-  try {
-    const res = await fetch(`/api/list?page=${page}&limit=50&order=ranked`);
-    if (!res.ok) throw new Error("Ошибка API");
-
-    const payload = await res.json();
-    const chunk = Array.isArray(payload) ? payload : (payload.data || []);
-
-    allAnime = [...allAnime, ...chunk];
-    hasMore = Array.isArray(payload) ? false : !!payload.hasMore;
-    currentPage = Array.isArray(payload) ? page : (payload.page || page);
-
-    renderDynamicFilters();
-    applyFilters();
-  } catch (err) {
-    console.error(err);
-    if (!allAnime.length) {
-      document.getElementById("grid").innerHTML = `<div class="empty-state"><h2>Ошибка загрузки</h2><p>Проверь подключение и попробуй позже.</p></div>`;
-    }
-  } finally {
-    loading = false;
-    setLoadMoreVisibility();
-  }
-}
-
-function openAgeModal(onConfirm) {
-  const overlay = document.createElement("div");
-  overlay.className = "age-modal-overlay";
-  overlay.innerHTML = `
-    <div class="age-modal">
-      <h3>⚠ Подтверждение возраста</h3>
-      <p>Этот тайтл имеет возрастное ограничение 18+.</p>
-      <div class="age-actions">
-        <button id="confirmAdult" class="primary-btn">Мне есть 18</button>
-        <button id="cancelAdult" class="ghost-btn">Вернуться</button>
+  banner.innerHTML = `
+    <div class="hero-banner-content">
+      <div>
+        <h1>AniLuna</h1>
+        <p>Новый релиз: ${getTitle(recent)}</p>
+        <a class="primary-btn banner-btn" href="pages/anime.html?id=${recent.id}">▶ Смотреть</a>
       </div>
+      <img src="${getImage(recent)}" alt="${getTitle(recent)}" onerror="this.src='${FALLBACK_POSTER}'">
     </div>
   `;
+}
 
-  overlay.querySelector("#confirmAdult").onclick = () => {
-    localStorage.setItem("adult_confirmed", "yes");
-    overlay.remove();
-    onConfirm();
+async function loadHomeTitles() {
+  const pages = [1, 2];
+  const result = await Promise.all(pages.map((page) => fetch(`/api/list?page=${page}&limit=20&order=ranked`).then((r) => r.json()).catch(() => ({ data: [] }))));
+
+  const map = new Map();
+  result.forEach((payload) => (payload.data || []).forEach((item) => map.set(item.id, item)));
+  homeState.all = [...map.values()].slice(0, 40);
+  homeState.genres = [...new Set(homeState.all.flatMap((a) => (a.genres || []).map((g) => g.russian || g.name).filter(Boolean)))].sort((a, b) => a.localeCompare(b, "ru"));
+
+  renderBanner();
+  renderHome();
+  renderGenreOverlay();
+}
+
+function setupHeaderScroll() {
+  const header = document.getElementById("siteHeader");
+  let lastY = window.scrollY;
+  window.addEventListener("scroll", () => {
+    const current = window.scrollY;
+    if (current > lastY && current > 120) header.classList.add("header-hidden");
+    else header.classList.remove("header-hidden");
+    lastY = current;
+  }, { passive: true });
+}
+
+function createSearchItem(item) {
+  return `
+    <a class="search-item" href="pages/anime.html?id=${item.id}">
+      <img src="${getImage(item)}" alt="${getTitle(item)}" onerror="this.src='${FALLBACK_POSTER}'">
+      <div>
+        <strong>${getTitle(item)}</strong>
+        <span>${item.aired_on ? item.aired_on.slice(0, 4) : "—"} • ${(item.kind || "tv").toUpperCase()}</span>
+      </div>
+    </a>
+  `;
+}
+
+async function runSearch(query) {
+  const results = document.getElementById("searchOverlayResults");
+  if (!query) return (results.innerHTML = "<div class='empty-inline'>Начните вводить название.</div>");
+  results.innerHTML = "<div class='empty-inline'>Поиск...</div>";
+
+  const res = await fetch(`/api/search?query=${encodeURIComponent(query)}&limit=180`);
+  const list = (await res.json()).data || [];
+  results.innerHTML = list.length ? list.map(createSearchItem).join("") : "<div class='empty-inline'>Ничего не найдено.</div>";
+}
+
+function setupSearchOverlay() {
+  const input = document.getElementById("search");
+  const overlay = document.getElementById("searchOverlay");
+  const overlayInput = document.getElementById("searchOverlayInput");
+  const close = document.getElementById("searchClose");
+
+  const open = () => {
+    overlay.classList.remove("hidden");
+    document.body.classList.add("no-scroll");
+    overlayInput.value = input.value;
+    overlayInput.focus();
+    runSearch(overlayInput.value.trim());
   };
+  const hide = () => { overlay.classList.add("hidden"); document.body.classList.remove("no-scroll"); };
 
-  overlay.querySelector("#cancelAdult").onclick = () => overlay.remove();
-
-  document.body.appendChild(overlay);
+  input.addEventListener("focus", open);
+  input.addEventListener("input", () => input.value.trim() && open());
+  overlayInput.addEventListener("input", () => runSearch(overlayInput.value.trim()));
+  close.addEventListener("click", hide);
+  overlay.addEventListener("click", (e) => e.target === overlay && hide());
+  document.addEventListener("keydown", (e) => e.key === "Escape" && hide());
 }
 
-document.getElementById("search").addEventListener("input", applyFilters);
-document.getElementById("filterGenre").addEventListener("change", applyFilters);
-document.getElementById("filterYear").addEventListener("change", applyFilters);
-document.getElementById("filterStatus").addEventListener("change", applyFilters);
-document.getElementById("filterKind").addEventListener("change", applyFilters);
+function renderGenreOverlay() {
+  const host = document.getElementById("genreOverlayList");
+  host.innerHTML = ["Все", ...homeState.genres].map((g) => `<button class="genre-btn">${g}</button>`).join("");
 
-document.getElementById("loadMore").addEventListener("click", () => loadPage(currentPage + 1));
-
-
-const querySearch = new URLSearchParams(window.location.search).get("search");
-if (querySearch) {
-  document.getElementById("search").value = querySearch;
-  state.search = querySearch.toLowerCase();
+  host.querySelectorAll(".genre-btn").forEach((btn) => {
+    btn.onclick = () => {
+      homeState.filteredGenre = btn.textContent === "Все" ? "" : btn.textContent;
+      document.getElementById("genreOverlay").classList.add("hidden");
+      document.body.classList.remove("no-scroll");
+      renderHome();
+    };
+  });
 }
 
-loadPage(1);
+function setupGenreOverlay() {
+  const overlay = document.getElementById("genreOverlay");
+  document.getElementById("openGenres").onclick = () => {
+    overlay.classList.remove("hidden");
+    document.body.classList.add("no-scroll");
+  };
+  document.getElementById("genreClose").onclick = () => {
+    overlay.classList.add("hidden");
+    document.body.classList.remove("no-scroll");
+  };
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) {
+      overlay.classList.add("hidden");
+      document.body.classList.remove("no-scroll");
+    }
+  });
+}
+
+setupHeaderScroll();
+setupSearchOverlay();
+setupGenreOverlay();
+loadHomeTitles();
