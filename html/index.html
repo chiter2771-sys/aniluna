@@ -16,6 +16,7 @@
       </div>
 
       <nav class="header-links">
+        <button id="openGenres" class="source-btn">Жанры</button>
         <a href="#homeSections">Главная</a>
       </nav>
     </div>
@@ -25,6 +26,22 @@
     <section id="recentBanner" class="hero hero-banner"></section>
     <section class="home-sections" id="homeSections"></section>
   </main>
+
+  <div id="searchOverlay" class="search-overlay hidden" aria-hidden="true">
+    <div class="search-modal">
+      <button class="search-close" id="searchClose" aria-label="Закрыть">✕</button>
+      <input id="searchOverlayInput" class="search-modal-input" placeholder="Искать аниме...">
+      <div id="searchOverlayResults" class="search-results-list"></div>
+    </div>
+  </div>
+
+  <div id="genreOverlay" class="search-overlay hidden" aria-hidden="true">
+    <div class="search-modal">
+      <button class="search-close" id="genreClose" aria-label="Закрыть">✕</button>
+      <h2>Жанры</h2>
+      <div id="genreOverlayList" class="genre-overlay-list"></div>
+    </div>
+  </div>
 
   <div id="searchOverlay" class="search-overlay hidden" aria-hidden="true">
     <div class="search-modal">

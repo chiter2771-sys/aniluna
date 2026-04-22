@@ -205,8 +205,10 @@ app.get("/api/player/:id", async (req, res) => {
     const sources = (response.data || []).map((item) => {
       const raw = item.player_url || item.url || "";
       const yid = parseYoutubeId(raw);
+      const kind = (item.kind || "video").toLowerCase();
       return {
-        label: (item.kind || "video").toUpperCase(),
+        label: kind.startsWith("episode") ? "Серия" : (item.kind || "video").toUpperCase(),
+        kind,
         embedUrl: yid ? `https://www.youtube.com/embed/${yid}` : raw,
         directUrl: /\.(mp4|webm|m3u8)(\?|$)/i.test(raw) ? raw : ""
       };
