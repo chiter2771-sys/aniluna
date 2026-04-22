@@ -10,7 +10,6 @@ const root = path.join(__dirname, "..");
 app.use(cors());
 app.use(express.static(root));
 
-
 const fallbackPath = path.join(root, "json", "fallback-anime.json");
 const fallbackAnime = fs.existsSync(fallbackPath)
   ? JSON.parse(fs.readFileSync(fallbackPath, "utf-8"))
@@ -26,10 +25,13 @@ function filterFallbackList(list, { search, genre, status, kind }) {
     return hasSearch && hasGenre && hasStatus && hasKind;
   });
 }
+
 const cache = {
   list: {},
   anime: {},
-  player: {}
+  player: {},
+  episodes: {},
+  character: {}
 };
 
 const CACHE_TIME = 1000 * 60 * 10;
@@ -41,6 +43,13 @@ function isCacheFresh(entry) {
 function parseYoutubeId(url = "") {
   const match = url.match(/(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{6,})/);
   return match ? match[1] : null;
+}
+
+function getHeaders() {
+  return {
+    "User-Agent": "Mozilla/5.0",
+    Accept: "application/json"
+  };
 }
 
 app.get("/", (req, res) => {
@@ -76,7 +85,7 @@ app.get("/api/list", async (req, res) => {
 
     const response = await axios.get("https://shikimori.one/api/animes", {
       params,
-      headers: { "User-Agent": "Mozilla/5.0" },
+      headers: getHeaders(),
       timeout: 10000
     });
 
@@ -116,15 +125,15 @@ app.get("/api/anime/:id", async (req, res) => {
 
     const [animeRes, rolesRes, relatedRes] = await Promise.all([
       axios.get(`https://shikimori.one/api/animes/${id}`, {
-        headers: { "User-Agent": "Mozilla/5.0" },
+        headers: getHeaders(),
         timeout: 10000
       }),
       axios.get(`https://shikimori.one/api/animes/${id}/roles`, {
-        headers: { "User-Agent": "Mozilla/5.0" },
+        headers: getHeaders(),
         timeout: 10000
       }).catch(() => ({ data: [] })),
       axios.get(`https://shikimori.one/api/animes/${id}/related`, {
-        headers: { "User-Agent": "Mozilla/5.0" },
+        headers: getHeaders(),
         timeout: 10000
       }).catch(() => ({ data: [] }))
     ]);
@@ -132,12 +141,13 @@ app.get("/api/anime/:id", async (req, res) => {
     const anime = animeRes.data;
     const characters = (rolesRes.data || [])
       .filter((item) => item.character)
-      .slice(0, 18)
+      .slice(0, 24)
       .map((item) => ({
         id: item.character.id,
         name: item.character.russian || item.character.name,
         role: item.roles_russian?.[0] || item.roles_en?.[0] || "Персонаж",
-        image: item.character.image?.original ? `https://shikimori.one${item.character.image.original}` : ""
+        image: item.character.image?.original ? `https://shikimori.one${item.character.image.original}` : "",
+        url: item.character.url
       }));
 
     const related = (relatedRes.data || [])
@@ -179,6 +189,63 @@ app.get("/api/anime/:id", async (req, res) => {
   }
 });
 
+app.get("/api/episodes/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    if (isCacheFresh(cache.episodes[id])) {
+      return res.json(cache.episodes[id].data);
+    }
+
+    const response = await axios.get(`https://shikimori.one/api/animes/${id}/episodes`, {
+      headers: getHeaders(),
+      timeout: 10000
+    });
+
+    const episodes = (response.data || []).map((ep) => ({
+      episode: Number(ep.episode) || 0,
+      releasedAt: ep.released_at,
+      name: `Серия ${ep.episode}`
+    }));
+
+    const payload = { episodes };
+    cache.episodes[id] = { data: payload, time: Date.now() };
+    return res.json(payload);
+  } catch (err) {
+    console.error("Ошибка episodes:", err.message);
+    return res.json({ episodes: [] });
+  }
+});
+
+app.get("/api/character/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    if (isCacheFresh(cache.character[id])) {
+      return res.json(cache.character[id].data);
+    }
+
+    const response = await axios.get(`https://shikimori.one/api/characters/${id}`, {
+      headers: getHeaders(),
+      timeout: 10000
+    });
+
+    const item = response.data || {};
+    const payload = {
+      id: item.id,
+      name: item.russian || item.name,
+      image: item.image?.original ? `https://shikimori.one${item.image.original}` : "",
+      description: item.description || "Описание пока отсутствует."
+    };
+
+    cache.character[id] = { data: payload, time: Date.now() };
+    return res.json(payload);
+  } catch (err) {
+    console.error("Ошибка character:", err.message);
+    return res.json({ description: "Описание персонажа недоступно." });
+  }
+});
+
 app.get("/api/player/:id", async (req, res) => {
   try {
     const id = req.params.id;
@@ -188,7 +255,7 @@ app.get("/api/player/:id", async (req, res) => {
     }
 
     const response = await axios.get(`https://shikimori.one/api/animes/${id}/videos`, {
-      headers: { "User-Agent": "Mozilla/5.0" },
+      headers: getHeaders(),
       timeout: 10000
     });
 
@@ -206,8 +273,16 @@ app.get("/api/player/:id", async (req, res) => {
 
     const payload = {
       sources,
+      controls: {
+        skipOpening: 85,
+        skipEnding: 90,
+        autoNext: true,
+        dubs: ["Русская озвучка", "Оригинал"],
+        qualities: ["1080p", "720p", "480p"],
+        seasons: ["Сезон 1"]
+      },
       fallback: {
-        message: "Нет встроенного видео. Добавьте лицензированный iframe-источник на сервере."
+        message: "Нет прямого видеофайла для Plyr. Используется iframe-режим."
       }
     };
 
@@ -215,7 +290,7 @@ app.get("/api/player/:id", async (req, res) => {
     return res.json(payload);
   } catch (err) {
     console.error("Ошибка player:", err.message);
-    return res.json({ sources: [], fallback: { message: "Плеер временно недоступен" } });
+    return res.json({ sources: [], controls: {}, fallback: { message: "Плеер временно недоступен" } });
   }
 });
 
