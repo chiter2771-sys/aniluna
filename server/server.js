@@ -30,6 +30,10 @@ function parseYoutubeId(url = "") {
   const match = url.match(/(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{6,})/);
   return match ? match[1] : null;
 }
+function parseEpisodeFromText(text = "") {
+  const match = text.match(/(?:ep|episode|серия|эпизод)\s*#?\s*(\d{1,4})/i) || text.match(/\b(\d{1,4})\b/);
+  return match ? Number(match[1]) : null;
+}
 
 function fallbackFilter(list, query) {
   const needle = normalize(query);
@@ -202,15 +206,45 @@ app.get("/api/player/:id", async (req, res) => {
     if (isCacheFresh(cache.player[id])) return res.json(cache.player[id].data);
 
     const response = await axios.get(`https://shikimori.one/api/animes/${id}/videos`, { headers, timeout: 10000 });
-    const sources = (response.data || []).map((item) => {
+    const rawItems = response.data || [];
+    const normalized = rawItems.map((item) => {
       const raw = item.player_url || item.url || "";
       const yid = parseYoutubeId(raw);
+      const episode = parseEpisodeFromText(`${item.name || ""} ${item.kind || ""}`);
       return {
         label: (item.kind || "video").toUpperCase(),
+        kind: (item.kind || "").toLowerCase(),
+        episode,
+        name: item.name || "",
         embedUrl: yid ? `https://www.youtube.com/embed/${yid}` : raw,
         directUrl: /\.(mp4|webm|m3u8)(\?|$)/i.test(raw) ? raw : ""
       };
     }).filter((x) => x.embedUrl || x.directUrl);
+
+    const episodeLike = normalized.filter((x) => x.kind.includes("episode") || x.episode);
+    const baseList = episodeLike.length ? episodeLike : normalized.filter((x) => !["pv", "op", "ed", "op_ed_clip", "character_trailer", "episode_preview"].includes(x.kind));
+    const grouped = new Map();
+    baseList.forEach((item, index) => {
+      const key = item.label || `Источник ${index + 1}`;
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key).push(item);
+    });
+
+    const sources = [...grouped.entries()].map(([label, items], idx) => ({
+      id: idx,
+      label,
+      directUrl: items[0]?.directUrl || "",
+      embedUrl: items[0]?.embedUrl || "",
+      episodes: items
+        .filter((i) => i.episode)
+        .sort((a, b) => a.episode - b.episode)
+        .map((i) => ({
+          episode: i.episode,
+          directUrl: i.directUrl,
+          embedUrl: i.embedUrl,
+          label: i.name || `Серия ${i.episode}`
+        }))
+    }));
 
     const payload = {
       sources,

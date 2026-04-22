@@ -42,11 +42,14 @@ body.no-scroll { overflow: hidden; }
   text-decoration: none;
   font-size: 42px;
   font-weight: 900;
-  text-shadow: 0 0 24px rgba(139, 92, 246, 0.54);
+  text-shadow: 0 0 14px rgba(125, 140, 190, 0.28);
+  transition: color .35s ease, text-shadow .45s ease;
+  display: inline-block;
+  width: fit-content;
 }
 .logo:hover {
-  color: #fff;
-  text-shadow: 0 0 10px rgba(173, 216, 255, .8), 0 0 30px rgba(147, 197, 253, .9), 0 0 50px rgba(99, 102, 241, .8);
+  color: #eef6ff;
+  text-shadow: 0 0 8px rgba(186, 210, 255, .38), 0 0 22px rgba(155, 179, 230, .44), 0 0 36px rgba(120, 143, 196, .36);
 }
 .header-search-wrap input,
 .search-modal-input,
@@ -106,6 +109,24 @@ body.no-scroll { overflow: hidden; }
   gap: 12px;
   overflow-x: auto;
   padding-bottom: 8px;
+  scrollbar-width: none;
+}
+.scroll-row::-webkit-scrollbar,
+.h-scroll::-webkit-scrollbar { display: none; }
+.scroll-row-wrap {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+}
+.scroll-arrow {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(7, 15, 34, 0.88);
+  color: #dbeafe;
+  cursor: pointer;
 }
 .home-mini,
 .mini-card {
@@ -157,13 +178,39 @@ body.no-scroll { overflow: hidden; }
   z-index: 5;
   display: flex;
   gap: 8px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .22s ease;
 }
 .player-mount.integrated video { width: 100%; max-height: min(62vw, 680px); }
+.player-mount.integrated iframe {
+  width: 100%;
+  min-height: min(56vw, 640px);
+  border: 0;
+  display: block;
+}
+.player-shell:hover .player-top-controls,
+.player-shell:focus-within .player-top-controls,
+.player-shell:hover .skip-btn,
+.player-shell:focus-within .skip-btn {
+  opacity: 1;
+  pointer-events: auto;
+}
+.player-shell:fullscreen .player-top-controls,
+.player-shell:fullscreen .skip-btn,
+.player-shell:-webkit-full-screen .player-top-controls,
+.player-shell:-webkit-full-screen .skip-btn {
+  opacity: 1;
+  pointer-events: auto;
+}
 .skip-btn {
   position: absolute;
   right: 12px;
   bottom: 72px;
   z-index: 6;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .22s ease;
 }
 .episode-row,
 .source-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
@@ -215,13 +262,6 @@ body.no-scroll { overflow: hidden; }
   .hero-banner-content { grid-template-columns: 1fr; }
   .big-info { grid-template-columns: 1fr; }
   .meta { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
-}
-
-.site-header { transition: transform .25s ease; }
-.site-header.header-hidden { transform: translateY(-100%); }
-.logo:hover {
-  color: #fff;
-  text-shadow: 0 0 10px rgba(173, 216, 255, .8), 0 0 26px rgba(147, 197, 253, .9), 0 0 48px rgba(99, 102, 241, .8);
 }
 
 .catalog-layout { display: grid; grid-template-columns: 280px 1fr; gap: 16px; align-items: start; }
@@ -284,4 +324,29 @@ body.no-scroll { overflow: hidden; }
   .catalog-sidebar { position: static; max-height: none; }
   .sidebar-genres { flex-direction: row; flex-wrap: wrap; }
   .hero-banner-content { grid-template-columns: 1fr; }
+  .scroll-row { grid-auto-columns: minmax(160px, 180px); }
+  .player-shell { padding-top: 52px; }
+  .player-top-controls { flex-wrap: wrap; max-width: calc(100% - 16px); }
+  .scroll-arrow { display: none; }
+}
+
+@media (max-width: 680px) {
+  .container { width: calc(100% - 16px); }
+  .page-space,
+  .anime-layout { padding: 12px 0 24px; }
+  .logo { font-size: 34px; }
+  .hero,
+  .info-box,
+  .player-box,
+  .content-block { border-radius: 16px; padding: 12px; }
+  .meta { grid-template-columns: repeat(2, minmax(100px, 1fr)); }
+  .meta-item strong { font-size: 20px; }
+  .scroll-row { grid-auto-columns: minmax(140px, 155px); gap: 10px; }
+  .home-mini-info strong,
+  .mini-card-info strong { font-size: 15px; }
+  .player-mount.integrated iframe,
+  .player-mount.integrated video { min-height: 220px; max-height: 56vh; }
+  .player-top-controls { position: static; opacity: 1; pointer-events: auto; margin-bottom: 8px; }
+  .player-shell { padding-top: 10px; }
+  .skip-btn { bottom: 12px; right: 10px; }
 }

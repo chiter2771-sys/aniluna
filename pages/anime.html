@@ -47,8 +47,6 @@
         <div id="playerMount" class="player-mount integrated"></div>
         <button class="skip-btn" id="skipIntroBtn">Пропустить опенинг</button>
       </div>
-      <div id="episodeList" class="episode-row"></div>
-      <div id="sourceButtons" class="source-buttons"></div>
     </section>
 
     <section class="content-block">
@@ -58,12 +56,20 @@
 
     <section class="content-block">
       <h2>👥 Персонажи</h2>
-      <div id="characters" class="h-scroll"></div>
+      <div class="scroll-row-wrap" data-scroll-block>
+        <button class="scroll-arrow left" type="button" aria-label="Прокрутить персонажей влево">‹</button>
+        <div id="characters" class="h-scroll"></div>
+        <button class="scroll-arrow right" type="button" aria-label="Прокрутить персонажей вправо">›</button>
+      </div>
     </section>
 
     <section class="content-block">
       <h2>✨ Рекомендации</h2>
-      <div id="related" class="h-scroll"></div>
+      <div class="scroll-row-wrap" data-scroll-block>
+        <button class="scroll-arrow left" type="button" aria-label="Прокрутить рекомендации влево">‹</button>
+        <div id="related" class="h-scroll"></div>
+        <button class="scroll-arrow right" type="button" aria-label="Прокрутить рекомендации вправо">›</button>
+      </div>
     </section>
   </main>
 
@@ -71,6 +77,7 @@
   <script>
     const animeId = new URLSearchParams(window.location.search).get("id");
     const normalize = (text = "") => text.toLowerCase().replace(/ё/g, "е");
+    const FALLBACK_COVER = "https://placehold.co/400x600/0f172a/e2e8f0?text=AniLuna";
 
     document.getElementById("globalSearch").addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
@@ -80,9 +87,10 @@
     });
 
     function renderCard(item, sub = "") {
+      const image = item.image || FALLBACK_COVER;
       return `
         <article class="mini-card">
-          <img src="${item.image || ""}" alt="${item.name || item.title || ""}" loading="lazy" decoding="async">
+          <img src="${image}" alt="${item.name || item.title || ""}" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${FALLBACK_COVER}'">
           <div class="mini-card-info">
             <strong>${item.name || item.title || "Без названия"}</strong>
             <span>${sub}</span>
@@ -103,28 +111,35 @@
       return ({ tv: "TV", movie: "Фильм", ova: "OVA", ona: "ONA", special: "Special" }[kind]) || (kind || "—").toUpperCase();
     }
 
-    function renderTopControls(controls) {
-      const host = document.getElementById("playerTopControls");
-      host.innerHTML = `
-        <select id="episodeSelect" class="player-select"></select>
-        <button id="nextEpisode" class="source-btn">Дальше</button>
-        <select class="player-select">${(controls.dubs || ["Озвучка"]).map((d) => `<option>${d}</option>`).join("")}</select>
-        <select class="player-select">${(controls.seasons || ["Сезон 1"]).map((s) => `<option>${s}</option>`).join("")}</select>
-        <select class="player-select">${(controls.qualities || ["720p"]).map((q) => `<option>${q}</option>`).join("")}</select>
-      `;
+    function setupHorizontalScrollers(scope = document) {
+      scope.querySelectorAll("[data-scroll-block]").forEach((block) => {
+        const row = block.querySelector(".scroll-row, .h-scroll");
+        const left = block.querySelector(".scroll-arrow.left");
+        const right = block.querySelector(".scroll-arrow.right");
+        if (!row || !left || !right) return;
+
+        const scrollByCard = (direction) => {
+          const card = row.querySelector(".home-mini, .mini-card");
+          const cardWidth = card ? card.getBoundingClientRect().width : 220;
+          row.scrollBy({ left: direction * (cardWidth + 12), behavior: "smooth" });
+        };
+
+        left.onclick = () => scrollByCard(-1);
+        right.onclick = () => scrollByCard(1);
+      });
     }
 
-    function renderEpisodes(episodes) {
-      const row = document.getElementById("episodeList");
-      row.innerHTML = episodes.length
-        ? episodes.map((ep) => `<button class="source-btn episode-btn" data-ep="${ep.episode}">Серия ${ep.episode}</button>`).join("")
-        : `<div class="empty-inline">Серии недоступны.</div>`;
-
-      const select = document.getElementById("episodeSelect");
-      if (!select) return;
-      select.innerHTML = episodes.length
-        ? episodes.map((ep) => `<option value="${ep.episode}">Серия ${ep.episode}</option>`).join("")
-        : `<option>Серия 1</option>`;
+    function renderTopControls(controls, episodes = [], sources = []) {
+      const host = document.getElementById("playerTopControls");
+      host.innerHTML = `
+        <select id="episodeSelect" class="player-select">${episodes.length ? episodes.map((ep) => `<option value="${ep.episode}">Серия ${ep.episode}</option>`).join("") : `<option value="1">Серия 1</option>`}</select>
+        <button id="prevEpisode" class="source-btn">Назад</button>
+        <button id="nextEpisode" class="source-btn">Дальше</button>
+        <select id="sourceSelect" class="player-select">${sources.length ? sources.map((src, idx) => `<option value="${idx}">${src.label || `Источник ${idx + 1}`}</option>`).join("") : `<option value="0">Источник</option>`}</select>
+        <select class="player-select">${(controls.dubs || ["Озвучка"]).map((d) => `<option>${d}</option>`).join("")}</select>
+        <select class="player-select">${(controls.seasons || ["Сезон 1"]).map((s) => `<option>${s}</option>`).join("")}</select>
+        <select class="player-select">${(controls.qualities || ["1080p", "720p", "480p"]).map((q) => `<option>${q}</option>`).join("")}</select>
+      `;
     }
 
     function mountPlyr(source) {
@@ -187,7 +202,9 @@
       document.title = `AniLuna — ${anime.title || "Тайтл"}`;
       document.getElementById("title").textContent = anime.title || "Без названия";
       document.getElementById("originalTitle").textContent = anime.originalTitle || "";
-      document.getElementById("image").src = anime.image || "";
+      const poster = anime.image || FALLBACK_COVER;
+      document.getElementById("image").src = poster;
+      document.getElementById("image").onerror = function onPosterError() { this.onerror = null; this.src = FALLBACK_COVER; };
       document.getElementById("desc").textContent = cleanDescription(anime.description) || "Описание отсутствует";
       document.getElementById("status").textContent = mapStatus(anime.status);
       document.getElementById("kind").textContent = mapKind(anime.kind);
@@ -211,31 +228,54 @@
       [...related.querySelectorAll(".mini-card")].forEach((card, idx) => {
         card.onclick = () => { window.location.href = `pages/anime.html?id=${anime.related[idx].id}`; };
       });
+      setupHorizontalScrollers();
 
-      renderTopControls(playerData.controls || {});
-      renderEpisodes((episodesData.episodes || []).slice(0, anime.episodes || 9999));
-
+      const episodes = (episodesData.episodes || []).slice(0, anime.episodes || 9999);
       const sources = playerData.sources || [];
-      let player = mountPlyr(sources[0]);
+      renderTopControls(playerData.controls || {}, episodes, sources);
 
-      const sourceButtons = document.getElementById("sourceButtons");
-      sourceButtons.innerHTML = sources.map((src, idx) => `<button class='source-btn ${idx === 0 ? "active" : ""}' data-index='${idx}'>${src.label || `Источник ${idx + 1}`}</button>`).join("");
+      const episodeSelect = document.getElementById("episodeSelect");
+      const sourceSelect = document.getElementById("sourceSelect");
+      const hasEpisodes = episodes.length > 0;
+      const firstSource = sources[0] || {};
+      let player = mountPlyr(firstSource);
 
-      sourceButtons.querySelectorAll(".source-btn").forEach((btn) => {
-        btn.onclick = () => {
-          sourceButtons.querySelectorAll(".source-btn").forEach((b) => b.classList.remove("active"));
-          btn.classList.add("active");
-          const idx = Number(btn.dataset.index);
-          if (player) player.destroy();
-          player = mountPlyr(sources[idx]);
-        };
-      });
+      const resolveSourceForEpisode = (episode, sourceIdx) => {
+        const source = sources[sourceIdx] || sources[0] || {};
+        const list = source.episodes || [];
+        if (!list.length) return source;
+        return list.find((item) => Number(item.episode) === Number(episode)) || list[0] || source;
+      };
+
+      const playCurrent = () => {
+        const selectedEpisode = Number(episodeSelect?.value || episodes[0]?.episode || 1);
+        const selectedSource = Number(sourceSelect?.value || 0);
+        const resolved = resolveSourceForEpisode(selectedEpisode, selectedSource);
+        if (player) player.destroy();
+        player = mountPlyr(resolved);
+      };
+
+      if (hasEpisodes && episodeSelect) {
+        episodeSelect.addEventListener("change", playCurrent);
+      } else if (episodeSelect) {
+        episodeSelect.disabled = true;
+      }
+
+      if (sourceSelect) {
+        sourceSelect.addEventListener("change", playCurrent);
+      }
 
       document.getElementById("skipIntroBtn").onclick = () => { if (player) player.currentTime = playerData.controls?.skipOpening || 85; };
 
+      document.getElementById("prevEpisode")?.addEventListener("click", () => {
+        if (!episodeSelect || episodeSelect.selectedIndex <= 0) return;
+        episodeSelect.selectedIndex -= 1;
+        playCurrent();
+      });
       document.getElementById("nextEpisode")?.addEventListener("click", () => {
-        const select = document.getElementById("episodeSelect");
-        if (select.selectedIndex < select.options.length - 1) select.selectedIndex += 1;
+        if (!episodeSelect || episodeSelect.selectedIndex >= episodeSelect.options.length - 1) return;
+        episodeSelect.selectedIndex += 1;
+        playCurrent();
       });
 
       let lastY = window.scrollY;

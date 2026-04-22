@@ -2,6 +2,7 @@ const homeState = {
   all: [],
   filteredGenre: ""
 };
+const FALLBACK_COVER = "https://placehold.co/400x600/0f172a/e2e8f0?text=AniLuna";
 
 const normalize = (text = "") => text
   .toLowerCase()
@@ -26,9 +27,10 @@ function formatEpisodes(anime) {
 }
 
 function renderMiniCard(anime) {
+  const image = getImage(anime) || FALLBACK_COVER;
   return `
     <a class="home-mini" href="pages/anime.html?id=${anime.id}">
-      <img src="${getImage(anime)}" alt="${getTitle(anime)}" loading="lazy" decoding="async">
+      <img src="${image}" alt="${getTitle(anime)}" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${FALLBACK_COVER}'">
       <div class="home-mini-info">
         <strong>${getTitle(anime)}</strong>
         <span>${formatEpisodes(anime)} · ⭐ ${anime.score || "?"}</span>
@@ -40,9 +42,13 @@ function renderMiniCard(anime) {
 function renderRow(title, list) {
   if (!list.length) return "";
   return `
-    <section class="home-row">
+    <section class="home-row" data-scroll-block>
       <h2>${title}</h2>
-      <div class="scroll-row">${list.map(renderMiniCard).join("")}</div>
+      <div class="scroll-row-wrap">
+        <button class="scroll-arrow left" type="button" aria-label="Прокрутить влево">‹</button>
+        <div class="scroll-row">${list.map(renderMiniCard).join("")}</div>
+        <button class="scroll-arrow right" type="button" aria-label="Прокрутить вправо">›</button>
+      </div>
     </section>
   `;
 }
@@ -111,6 +117,25 @@ function renderHome() {
   appendRow(root, "Романтика", romance);
   appendRow(root, "Комедия", comedy);
   appendRow(root, "Боевик", action);
+  setupHorizontalScrollers(root);
+}
+
+function setupHorizontalScrollers(scope = document) {
+  scope.querySelectorAll("[data-scroll-block]").forEach((block) => {
+    const row = block.querySelector(".scroll-row, .h-scroll");
+    const left = block.querySelector(".scroll-arrow.left");
+    const right = block.querySelector(".scroll-arrow.right");
+    if (!row || !left || !right) return;
+
+    const scrollByCard = (direction) => {
+      const card = row.querySelector(".home-mini, .mini-card");
+      const cardWidth = card ? card.getBoundingClientRect().width : 220;
+      row.scrollBy({ left: direction * (cardWidth + 12), behavior: "smooth" });
+    };
+
+    left.onclick = () => scrollByCard(-1);
+    right.onclick = () => scrollByCard(1);
+  });
 }
 
 function renderBanner() {
