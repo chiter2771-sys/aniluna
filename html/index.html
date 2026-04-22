@@ -12,58 +12,27 @@
       <a href="/" class="logo">AniLuna</a>
 
       <div class="header-search-wrap">
-        <input type="text" id="search" placeholder="Поиск аниме..." aria-label="Поиск аниме">
+        <input type="text" id="search" placeholder="Поиск аниме..." aria-label="Поиск аниме" autocomplete="off">
       </div>
 
       <nav class="header-links">
-        <a href="/">Главная</a>
-        <a href="#catalog">Каталог</a>
+        <a href="#homeSections">Главная</a>
       </nav>
     </div>
   </header>
 
   <main class="container page-space">
     <section id="recentBanner" class="hero hero-banner"></section>
-
     <section class="home-sections" id="homeSections"></section>
-
-    <section class="catalog-layout" id="catalog">
-      <aside class="catalog-sidebar" id="catalogSidebar">
-        <h3>Жанры</h3>
-        <div id="genres" class="genres sidebar-genres"></div>
-      </aside>
-
-      <div class="catalog-main">
-        <section class="hero">
-          <h1>Каталог аниме</h1>
-          <p>Недавно опубликованное, популярное и удобная фильтрация — как на топ-сайтах.</p>
-
-          <div class="filters-grid">
-            <select id="filterGenre"><option value="">Все жанры</option></select>
-            <select id="filterYear"><option value="">Все годы</option></select>
-            <select id="filterStatus">
-              <option value="">Любой статус</option>
-              <option value="released">Вышло</option>
-              <option value="ongoing">Выходит</option>
-              <option value="anons">Анонс</option>
-            </select>
-            <select id="filterKind">
-              <option value="">Любой тип</option>
-              <option value="tv">TV</option>
-              <option value="movie">Фильм</option>
-              <option value="ova">OVA</option>
-              <option value="ona">ONA</option>
-              <option value="special">Special</option>
-            </select>
-          </div>
-        </section>
-
-        <section>
-          <div id="grid" class="grid"></div>
-        </section>
-      </div>
-    </section>
   </main>
+
+  <div id="searchOverlay" class="search-overlay hidden" aria-hidden="true">
+    <div class="search-modal">
+      <button class="search-close" id="searchClose" aria-label="Закрыть">✕</button>
+      <input id="searchOverlayInput" class="search-modal-input" placeholder="Искать аниме...">
+      <div id="searchOverlayResults" class="search-results-list"></div>
+    </div>
+  </div>
 
   <script src="../js/anime.js"></script>
 </body>
