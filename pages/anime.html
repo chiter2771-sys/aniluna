@@ -129,14 +129,16 @@
 
     function mountPlyr(source) {
       const mount = document.getElementById("playerMount");
+      const sourceUrl = source?.directUrl || source?.embedUrl || source?.url || "";
+
+      if (source?.embedUrl && !source?.directUrl) {
+        mount.innerHTML = `<iframe id="animeVideo" src="${source.embedUrl}" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen loading="lazy"></iframe>`;
+        return null;
+      }
+
       mount.innerHTML = `<video id="animeVideo" playsinline controls crossorigin="anonymous"></video>`;
       const video = document.getElementById("animeVideo");
-
-      if (source?.directUrl) {
-        video.src = source.directUrl;
-      } else {
-        video.src = "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4";
-      }
+      video.src = sourceUrl || "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4";
 
       const player = new Plyr(video, {
         controls: ["play-large", "play", "progress", "current-time", "mute", "volume", "settings", "fullscreen"],
@@ -224,7 +226,7 @@
           sourceButtons.querySelectorAll(".source-btn").forEach((b) => b.classList.remove("active"));
           btn.classList.add("active");
           const idx = Number(btn.dataset.index);
-          player.destroy();
+          if (player) player.destroy();
           player = mountPlyr(sources[idx]);
         };
       });
