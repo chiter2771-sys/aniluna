@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AniLuna — Поиск</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header class="site-header" id="siteHeader">
+    <div class="container topbar">
+      <a href="/" class="logo">AniLuna</a>
+      <div class="header-search-wrap"><input type="text" id="queryInput" placeholder="Введите название аниме..."></div>
+      <nav class="header-links"><a href="/">Главная</a></nav>
+    </div>
+  </header>
+
+  <main class="container page-space">
+    <section class="search-page-layout">
+      <aside class="search-sidebar">
+        <h3>Жанры</h3>
+        <div id="genreList" class="genre-sidebar-list"></div>
+      </aside>
+
+      <section class="search-main">
+        <h1>Поиск аниме</h1>
+        <div id="searchMeta" class="search-meta"></div>
+        <div id="searchGrid" class="search-grid"></div>
+        <button id="loadMoreBtn" class="source-btn hidden">Показать ещё</button>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const FALLBACK_POSTER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='600'%3E%3Crect width='100%25' height='100%25' fill='%230c1630'/%3E%3Ctext x='50%25' y='50%25' fill='%2394a3b8' font-size='32' text-anchor='middle' dominant-baseline='middle'%3ENo Poster%3C/text%3E%3C/svg%3E";
+    const params = new URLSearchParams(location.search);
+    const state = { query: params.get("q") || "", genre: params.get("genre") || "", page: 1, limit: 24, hasMore: false };
+
+    const normalize = (text = "") => text.toLowerCase().replace(/ё/g, "е").replace(/[^\p{L}\p{N}\s]/gu, "").trim();
+    const getTitle = (anime) => anime.russian || anime.name || "Без названия";
+    const getImage = (anime) => {
+      const src = anime.image?.original || anime.image?.preview || anime.image?.x96 || anime.image;
+      if (!src) return FALLBACK_POSTER;
+      return src.startsWith("http") || src.startsWith("data:") ? src : `https://shikimori.one${src}`;
+    };
+
+    function renderCard(item) {
+      return `
+        <a class="home-mini" href="/pages/anime.html?id=${item.id}">
+          <img src="${getImage(item)}" alt="${getTitle(item)}" onerror="this.src='${FALLBACK_POSTER}'">
+          <div class="home-mini-info">
+            <strong>${getTitle(item)}</strong>
+            <span>${item.aired_on ? item.aired_on.slice(0, 4) : "—"} • ${(item.kind || "tv").toUpperCase()} • ⭐ ${item.score || "?"}</span>
+          </div>
+        </a>
+      `;
+    }
+
+    async function loadGenres() {
+      const payload = await fetch("/api/genres").then((r) => r.json()).catch(() => ({ data: [] }));
+      const list = payload.data || [];
+      const host = document.getElementById("genreList");
+      host.innerHTML = ["Все", ...list.map((g) => g.russian || g.name)]
+        .map((name) => `<button class='genre-chip ${normalize(name) === normalize(state.genre) || (!state.genre && name === "Все") ? "active" : ""}' data-genre='${name}'>${name}</button>`)
+        .join("");
+
+      [...host.querySelectorAll(".genre-chip")].forEach((btn) => {
+        btn.onclick = () => {
+          const selected = btn.dataset.genre;
+          state.genre = selected === "Все" ? "" : selected;
+          state.page = 1;
+          const next = new URLSearchParams();
+          if (state.query) next.set("q", state.query);
+          if (state.genre) next.set("genre", state.genre);
+          history.replaceState({}, "", `/search?${next.toString()}`);
+          loadResults(false);
+          loadGenres();
+        };
+      });
+    }
+
+    async function loadResults(append = false) {
+      const grid = document.getElementById("searchGrid");
+      const meta = document.getElementById("searchMeta");
+      const button = document.getElementById("loadMoreBtn");
+
+      if (!state.query.trim()) {
+        meta.textContent = "Введите запрос для поиска.";
+        grid.innerHTML = "";
+        button.classList.add("hidden");
+        return;
+      }
+
+      if (!append) grid.innerHTML = "<div class='empty-inline'>Загрузка...</div>";
+
+      const payload = await fetch(`/api/search?query=${encodeURIComponent(state.query)}&genre=${encodeURIComponent(state.genre)}&page=${state.page}&limit=${state.limit}`)
+        .then((r) => r.json())
+        .catch(() => ({ data: [], total: 0, hasMore: false }));
+
+      const items = payload.data || [];
+      state.hasMore = payload.hasMore;
+
+      meta.textContent = `По запросу "${state.query}" найдено ${payload.total || 0} тайтлов${state.genre ? ` в жанре ${state.genre}` : ""}.`;
+
+      if (!append) grid.innerHTML = "";
+      if (!items.length && !append) {
+        grid.innerHTML = "<div class='empty-inline'>Ничего не найдено.</div>";
+      } else {
+        grid.insertAdjacentHTML("beforeend", items.map(renderCard).join(""));
+      }
+
+      button.classList.toggle("hidden", !state.hasMore);
+    }
+
+    document.getElementById("loadMoreBtn").addEventListener("click", () => {
+      state.page += 1;
+      loadResults(true);
+    });
+
+    const input = document.getElementById("queryInput");
+    input.value = state.query;
+    input.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      state.query = input.value.trim();
+      state.page = 1;
+      const next = new URLSearchParams();
+      if (state.query) next.set("q", state.query);
+      if (state.genre) next.set("genre", state.genre);
+      history.replaceState({}, "", `/search?${next.toString()}`);
+      loadResults(false);
+    });
+
+    loadGenres();
+    loadResults(false);
+  </script>
+</body>
+</html>

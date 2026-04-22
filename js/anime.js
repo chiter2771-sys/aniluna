@@ -5,8 +5,9 @@ const normalize = (text = "") => text.toLowerCase().replace(/ё/g, "е").replace
 const getTitle = (anime) => anime.russian || anime.name || "Без названия";
 
 function getImage(anime) {
-  const original = anime.image?.original || anime.image?.preview || anime.image?.x96;
-  return original ? `https://shikimori.one${original}` : FALLBACK_POSTER;
+  const original = anime.image?.original || anime.image?.preview || anime.image?.x96 || anime.image;
+  if (!original) return FALLBACK_POSTER;
+  return original.startsWith("http") || original.startsWith("data:") ? original : `https://shikimori.one${original}`;
 }
 
 function formatEpisodes(anime) {
@@ -48,12 +49,17 @@ function withGenreFilter(list) {
   return list.filter((anime) => (anime.genres || []).some((g) => normalize(g.russian || g.name).includes(needle)));
 }
 
+function byGenre(list, genreName) {
+  const needle = normalize(genreName);
+  return list.filter((anime) => (anime.genres || []).some((g) => normalize(g.russian || g.name).includes(needle)));
+}
+
 function bindCarousels() {
   document.querySelectorAll(".carousel-btn").forEach((btn) => {
     btn.onclick = () => {
       const row = document.getElementById(btn.dataset.target);
       if (!row) return;
-      row.scrollBy({ left: btn.classList.contains("next") ? 240 : -240, behavior: "smooth" });
+      row.scrollBy({ left: btn.classList.contains("next") ? 260 : -260, behavior: "smooth" });
     };
   });
 }
@@ -63,15 +69,21 @@ function renderHome() {
   root.innerHTML = "";
 
   const base = withGenreFilter(homeState.all);
-  const popular = [...base].sort((a, b) => Number(b.score || 0) - Number(a.score || 0)).slice(0, 12);
-  const recent = [...base].sort((a, b) => new Date(b.aired_on || 0) - new Date(a.aired_on || 0)).slice(0, 12);
-  const upcoming = base.filter((a) => a.status === "anons").slice(0, 12);
-  const romance = base.filter((a) => (a.genres || []).some((g) => normalize(g.russian || g.name).includes("роман"))).slice(0, 12);
+  const popular = [...base].sort((a, b) => Number(b.score || 0) - Number(a.score || 0)).slice(0, 18);
+  const romance = byGenre(base, "роман").slice(0, 18);
+  const action = byGenre(base, "боев").slice(0, 18);
+  const comedy = byGenre(base, "комед").slice(0, 18);
+  const hentai = byGenre(base, "хентай").slice(0, 18);
+  const recent = [...base]
+    .sort((a, b) => new Date(b.aired_on || 0) - new Date(a.aired_on || 0))
+    .slice(0, 18);
 
   root.innerHTML += makeCarousel("row-popular", "Популярное", popular);
-  root.innerHTML += makeCarousel("row-recent", "Недавно опубликованные", recent);
-  root.innerHTML += makeCarousel("row-upcoming", "Скоро выйдут", upcoming);
   root.innerHTML += makeCarousel("row-romance", "Романтика", romance);
+  root.innerHTML += makeCarousel("row-action", "Боевик", action);
+  root.innerHTML += makeCarousel("row-comedy", "Комедия", comedy);
+  root.innerHTML += makeCarousel("row-hentai", "Хентай", hentai);
+  root.innerHTML += makeCarousel("row-recent", "Недавно вышедшие", recent);
 
   bindCarousels();
 }
@@ -94,13 +106,20 @@ function renderBanner() {
 }
 
 async function loadHomeTitles() {
-  const pages = [1, 2];
-  const result = await Promise.all(pages.map((page) => fetch(`/api/list?page=${page}&limit=20&order=ranked`).then((r) => r.json()).catch(() => ({ data: [] }))));
+  const pages = [1, 2, 3, 4, 5];
+  const result = await Promise.all(
+    pages.map((page) => fetch(`/api/list?page=${page}&limit=50&order=ranked`).then((r) => r.json()).catch(() => ({ data: [] })))
+  );
 
   const map = new Map();
   result.forEach((payload) => (payload.data || []).forEach((item) => map.set(item.id, item)));
-  homeState.all = [...map.values()].slice(0, 40);
-  homeState.genres = [...new Set(homeState.all.flatMap((a) => (a.genres || []).map((g) => g.russian || g.name).filter(Boolean)))].sort((a, b) => a.localeCompare(b, "ru"));
+  homeState.all = [...map.values()];
+
+  const genresRes = await fetch("/api/genres").then((r) => r.json()).catch(() => ({ data: [] }));
+  homeState.genres = (genresRes.data || [])
+    .map((item) => item.russian || item.name)
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b, "ru"));
 
   renderBanner();
   renderHome();
@@ -135,9 +154,16 @@ async function runSearch(query) {
   if (!query) return (results.innerHTML = "<div class='empty-inline'>Начните вводить название.</div>");
   results.innerHTML = "<div class='empty-inline'>Поиск...</div>";
 
-  const res = await fetch(`/api/search?query=${encodeURIComponent(query)}&limit=180`);
-  const list = (await res.json()).data || [];
-  results.innerHTML = list.length ? list.map(createSearchItem).join("") : "<div class='empty-inline'>Ничего не найдено.</div>";
+  const payload = await fetch(`/api/search?query=${encodeURIComponent(query)}&limit=8&page=1`).then((r) => r.json()).catch(() => ({ data: [] }));
+  const list = payload.data || [];
+
+  const moreButton = payload.hasMore
+    ? `<a class='show-more-link' href='/search?q=${encodeURIComponent(query)}'>Показать ещё</a>`
+    : "";
+
+  results.innerHTML = list.length
+    ? `${list.map(createSearchItem).join("")} ${moreButton}`
+    : "<div class='empty-inline'>Ничего не найдено.</div>";
 }
 
 function setupSearchOverlay() {
@@ -153,11 +179,17 @@ function setupSearchOverlay() {
     overlayInput.focus();
     runSearch(overlayInput.value.trim());
   };
-  const hide = () => { overlay.classList.add("hidden"); document.body.classList.remove("no-scroll"); };
+  const hide = () => {
+    overlay.classList.add("hidden");
+    document.body.classList.remove("no-scroll");
+  };
 
   input.addEventListener("focus", open);
   input.addEventListener("input", () => input.value.trim() && open());
   overlayInput.addEventListener("input", () => runSearch(overlayInput.value.trim()));
+  overlayInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") window.location.href = `/search?q=${encodeURIComponent(overlayInput.value.trim())}`;
+  });
   close.addEventListener("click", hide);
   overlay.addEventListener("click", (e) => e.target === overlay && hide());
   document.addEventListener("keydown", (e) => e.key === "Escape" && hide());
