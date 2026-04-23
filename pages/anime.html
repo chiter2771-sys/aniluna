@@ -179,6 +179,12 @@
       const info = document.getElementById("playerInfo");
       const activeSource = sources[0] || null;
 
+      const findSourceByDub = () => {
+        const selectedDub = dubSelect?.value;
+        if (!selectedDub) return sources[0] || null;
+        return sources.find((source) => source.translation === selectedDub || source.label === selectedDub) || sources[0] || null;
+      };
+
       const mountByEpisode = (index) => {
         const selectedEpisode = Number((episodes[index] || {}).episode || index + 1);
         const sourceEpisodeUrl = buildEpisodeUrl(activeSource?.episodeTemplate || activeSource?.embedUrl, selectedEpisode);
