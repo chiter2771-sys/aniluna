@@ -3,6 +3,7 @@ const path = require("path");
 const fs = require("fs");
 const axios = require("axios");
 const cors = require("cors");
+const { getKodikToken, searchByShikimoriId } = require("./parsers/animeParsersAdapter");
 
 const app = express();
 const root = path.join(__dirname, "..");
@@ -102,6 +103,17 @@ app.get("/api/list", async (req, res) => {
     const chunk = filtered.slice(start, start + limit);
     return res.json({ page, limit, hasMore: start + limit < filtered.length, data: chunk, source: "fallback" });
   }
+});
+
+
+app.get("/api/parser/status", async (_, res) => {
+  const token = await getKodikToken();
+  return res.json({
+    parser: "AnimeParsers-compatible Kodik adapter",
+    tokenConfigured: Boolean(process.env.KODIK_TOKEN),
+    tokenResolved: Boolean(token),
+    source: process.env.KODIK_TOKEN ? "env" : "remote"
+  });
 });
 
 app.get("/api/genres", async (_, res) => {
@@ -301,10 +313,17 @@ app.get("/api/episodes/:id", async (req, res) => {
       return res.json(payload);
     }
 
+    const parsed = await searchByShikimoriId(id);
+    if (parsed.ok && parsed.episodes.length) {
+      const payload = { episodes: parsed.episodes, source: "anime-parsers-kodik" };
+      cache.episodes[id] = { data: payload, time: Date.now() };
+      return res.json(payload);
+    }
+
     const response = await axios.get(`${SHIKI}/animes/${id}/episodes`, { headers, timeout: 10000 });
     const episodes = (response.data || []).map((ep) => ({ episode: Number(ep.episode) || 0, name: `Серия ${ep.episode}` }));
 
-    const payload = { episodes };
+    const payload = { episodes, source: "shikimori" };
     cache.episodes[id] = { data: payload, time: Date.now() };
     return res.json(payload);
   } catch {
@@ -356,6 +375,30 @@ app.get("/api/player/:id", async (req, res) => {
       return res.json(payload);
     }
 
+    const parsed = await searchByShikimoriId(id);
+    if (parsed.ok && parsed.sources.length) {
+      const payload = {
+        sources: parsed.sources,
+        controls: {
+          skipOpening: 85,
+          skipEnding: 90,
+          autoNext: true,
+          dubs: [...new Set(parsed.sources.map((item) => item.translation).filter(Boolean))],
+          qualities: ["1080p", "720p", "480p"],
+          seasons: ["Сезон 1"]
+        },
+        embed: {
+          provider: "kodik",
+          url: parsed.sources[0].embedUrl,
+          warning: "Плеер загружен через адаптер AnimeParsers/Kodik."
+        },
+        source: "anime-parsers-kodik"
+      };
+
+      cache.player[id] = { data: payload, time: Date.now() };
+      return res.json(payload);
+    }
+
     const response = await axios.get(`${SHIKI}/animes/${id}/videos`, { headers, timeout: 10000 });
     const sources = (response.data || []).map((item) => {
       const raw = item.player_url || item.url || "";
@@ -383,7 +426,8 @@ app.get("/api/player/:id", async (req, res) => {
         provider: "kodik",
         url: `https://kodik.cc/find-player?shikimoriID=${encodeURIComponent(id)}`,
         warning: "Если iframe пустой — Kodik блокирует домен. Используется резервный встроенный плеер ниже."
-      }
+      },
+      source: "shikimori-videos"
     };
 
     cache.player[id] = { data: payload, time: Date.now() };
