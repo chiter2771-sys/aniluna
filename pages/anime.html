@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AniLuna — Тайтл</title>
-  <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css">
   <link rel="stylesheet" href="../css/style.css">
 </head>
 <body>
@@ -41,9 +40,7 @@
     <section class="player-box">
       <h2>🎬 Смотреть</h2>
       <div class="player-shell" id="playerShell">
-        <div class="player-top-controls" id="playerTopControls"></div>
         <div id="playerMount" class="player-mount integrated"></div>
-        <button class="skip-btn" id="skipIntroBtn">Пропустить опенинг</button>
       </div>
       <div id="playerInfo" class="player-info"></div>
       <div id="episodeList" class="episode-row"></div>
@@ -73,7 +70,6 @@
     </section>
   </main>
 
-  <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
   <script>
     const animeId = new URLSearchParams(window.location.search).get("id");
     const FALLBACK_POSTER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='600'%3E%3Crect width='100%25' height='100%25' fill='%230c1630'/%3E%3Ctext x='50%25' y='50%25' fill='%2394a3b8' font-size='32' text-anchor='middle' dominant-baseline='middle'%3ENo Poster%3C/text%3E%3C/svg%3E";
@@ -101,31 +97,16 @@
       `;
     }
 
-    function renderTopControls(controls, episodes) {
-      const host = document.getElementById("playerTopControls");
-      host.innerHTML = `
-        <select id="episodeSelect" class="player-select">${episodes.map((ep) => `<option value='${ep.episode}'>Серия ${ep.episode}</option>`).join("") || "<option>Серия 1</option>"}</select>
-        <button id="nextEpisode" class="source-btn">Дальше</button>
-        <select id="dubSelect" class="player-select">${(controls.dubs || ["Озвучка"]).map((d) => `<option>${d}</option>`).join("")}</select>
-        <select id="seasonSelect" class="player-select">${(controls.seasons || ["Сезон 1"]).map((s) => `<option>${s}</option>`).join("")}</select>
-        <select id="qualitySelect" class="player-select">${(controls.qualities || ["720p"]).map((q) => `<option>${q}</option>`).join("")}</select>
-      `;
-    }
-
-    function mountPlyr(source) {
-      const mount = document.getElementById("playerMount");
-      mount.innerHTML = `<video id='animeVideo' playsinline controls crossorigin='anonymous'></video>`;
-      const video = document.getElementById("animeVideo");
-      video.src = source?.directUrl || "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4";
-      return new Plyr(video, {
-        controls: ["play-large", "play", "progress", "current-time", "mute", "volume", "settings", "fullscreen"],
-        settings: ["quality", "speed"]
-      });
-    }
-
     function mountEmbed(url) {
       const mount = document.getElementById("playerMount");
       mount.innerHTML = `<iframe class='external-player' src='${url}' allowfullscreen allow='autoplay; fullscreen'></iframe>`;
+    }
+
+    function buildEpisodeUrl(templateOrUrl, episode) {
+      if (!templateOrUrl) return "";
+      if (templateOrUrl.includes("{episode}")) return templateOrUrl.replaceAll("{episode}", String(episode));
+      const hasQuery = templateOrUrl.includes("?");
+      return `${templateOrUrl}${hasQuery ? "&" : "?"}episode=${encodeURIComponent(episode)}`;
     }
 
     function renderEpisodes(episodes, onSelect) {
@@ -194,53 +175,26 @@
       });
 
       bindCarousels();
-      renderTopControls(playerData.controls || {}, episodes);
-
       const sources = (playerData.sources || []).filter((s) => s.kind !== "pv" && s.kind !== "other");
       const info = document.getElementById("playerInfo");
-      let current = 0;
-      let player;
+      const activeSource = sources[0] || null;
 
       const mountByEpisode = (index) => {
-        if (player) player.destroy();
-        current = Math.min(index, Math.max(sources.length - 1, 0));
+        const selectedEpisode = Number((episodes[index] || {}).episode || index + 1);
+        const sourceEpisodeUrl = buildEpisodeUrl(activeSource?.episodeTemplate || activeSource?.embedUrl, selectedEpisode);
+        const fallbackEpisodeUrl = buildEpisodeUrl(playerData.embed?.url, selectedEpisode);
 
-        if (sources[current]?.directUrl) {
-          player = mountPlyr(sources[current]);
-          info.textContent = `Источник: встроенный плеер (${sources[current].label || "видео"}).`;
-          return;
-        }
-
-        if (playerData.embed?.url) {
-          mountEmbed(playerData.embed.url);
+        if (sourceEpisodeUrl || fallbackEpisodeUrl) {
+          mountEmbed(sourceEpisodeUrl || fallbackEpisodeUrl);
           info.textContent = playerData.embed.warning || "Источник: Kodik iframe.";
           return;
         }
 
-        player = mountPlyr();
-        info.textContent = "Резервный демо-источник: у тайтла нет доступного stream URL.";
+        info.textContent = "Не удалось сформировать ссылку Kodik плеера.";
       };
 
       renderEpisodes(episodes.length ? episodes : [{ episode: 1 }], (index) => mountByEpisode(index));
       mountByEpisode(0);
-
-      nextEpisode.onclick = () => {
-        const select = episodeSelect;
-        if (select.selectedIndex < select.options.length - 1) {
-          select.selectedIndex += 1;
-          mountByEpisode(select.selectedIndex);
-          document.querySelectorAll(".episode-btn").forEach((btn, idx) => btn.classList.toggle("active", idx === select.selectedIndex));
-        }
-      };
-
-      episodeSelect.onchange = () => {
-        mountByEpisode(episodeSelect.selectedIndex);
-        document.querySelectorAll(".episode-btn").forEach((btn, idx) => btn.classList.toggle("active", idx === episodeSelect.selectedIndex));
-      };
-
-      skipIntroBtn.onclick = () => {
-        if (player) player.currentTime = playerData.controls?.skipOpening || 85;
-      };
 
       let lastY = scrollY;
       window.addEventListener("scroll", () => {

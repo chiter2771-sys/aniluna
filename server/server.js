@@ -30,11 +30,6 @@ const headers = {
 const SHIKI = "https://shikimori.one/api";
 const JIKAN = "https://api.jikan.moe/v4";
 
-function parseYoutubeId(url = "") {
-  const match = url.match(/(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{6,})/);
-  return match ? match[1] : null;
-}
-
 function fallbackFilter(list, query, genre) {
   const needle = normalize(query);
   const genreNeedle = normalize(genre);
@@ -320,10 +315,11 @@ app.get("/api/episodes/:id", async (req, res) => {
       return res.json(payload);
     }
 
-    const response = await axios.get(`${SHIKI}/animes/${id}/episodes`, { headers, timeout: 10000 });
-    const episodes = (response.data || []).map((ep) => ({ episode: Number(ep.episode) || 0, name: `Серия ${ep.episode}` }));
+    const anime = isCacheFresh(cache.anime[id]) ? cache.anime[id].data : null;
+    const fallbackTotal = Math.max(1, Number(anime?.episodes || anime?.episodesAired || 1));
+    const episodes = Array.from({ length: fallbackTotal }, (_, idx) => ({ episode: idx + 1, name: `Серия ${idx + 1}` }));
 
-    const payload = { episodes, source: "shikimori" };
+    const payload = { episodes, source: "fallback-count" };
     cache.episodes[id] = { data: payload, time: Date.now() };
     return res.json(payload);
   } catch {
@@ -389,7 +385,7 @@ app.get("/api/player/:id", async (req, res) => {
         },
         embed: {
           provider: "kodik",
-          url: parsed.sources[0].embedUrl,
+          url: parsed.sources[0].episodeTemplate || parsed.sources[0].embedUrl,
           warning: "Плеер загружен через адаптер AnimeParsers/Kodik."
         },
         source: "anime-parsers-kodik"
@@ -399,32 +395,19 @@ app.get("/api/player/:id", async (req, res) => {
       return res.json(payload);
     }
 
-    const response = await axios.get(`${SHIKI}/animes/${id}/videos`, { headers, timeout: 10000 });
-    const sources = (response.data || []).map((item) => {
-      const raw = item.player_url || item.url || "";
-      const yid = parseYoutubeId(raw);
-      const kind = (item.kind || "video").toLowerCase();
-      return {
-        label: kind.startsWith("episode") ? "Серия" : (item.kind || "video").toUpperCase(),
-        kind,
-        embedUrl: yid ? `https://www.youtube.com/embed/${yid}` : raw,
-        directUrl: /\.(mp4|webm|m3u8)(\?|$)/i.test(raw) ? raw : ""
-      };
-    }).filter((x) => x.embedUrl || x.directUrl);
-
     const payload = {
-      sources,
+      sources: [],
       controls: {
         skipOpening: 85,
         skipEnding: 90,
         autoNext: true,
-        dubs: ["Озвучка 1", "Озвучка 2", "Оригинал"],
+        dubs: [],
         qualities: ["1080p", "720p", "480p"],
         seasons: ["Сезон 1"]
       },
       embed: {
         provider: "kodik",
-        url: `https://kodik.cc/find-player?shikimoriID=${encodeURIComponent(id)}`,
+        url: `https://kodik.cc/find-player?shikimoriID=${encodeURIComponent(id)}&episode={episode}`,
         warning: "Если iframe пустой — Kodik блокирует домен. Используется резервный встроенный плеер ниже."
       },
       source: "shikimori-videos"
