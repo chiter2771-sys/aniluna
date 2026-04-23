@@ -389,7 +389,7 @@ app.get("/api/player/:id", async (req, res) => {
         },
         embed: {
           provider: "kodik",
-          url: parsed.sources[0].embedUrl,
+          url: parsed.sources[0].episodeTemplate || parsed.sources[0].embedUrl,
           warning: "Плеер загружен через адаптер AnimeParsers/Kodik."
         },
         source: "anime-parsers-kodik"
@@ -424,7 +424,7 @@ app.get("/api/player/:id", async (req, res) => {
       },
       embed: {
         provider: "kodik",
-        url: `https://kodik.cc/find-player?shikimoriID=${encodeURIComponent(id)}`,
+        url: `https://kodik.cc/find-player?shikimoriID=${encodeURIComponent(id)}&episode={episode}`,
         warning: "Если iframe пустой — Kodik блокирует домен. Используется резервный встроенный плеер ниже."
       },
       source: "shikimori-videos"
