@@ -55,14 +55,20 @@ async function getKodikToken() {
 function mapKodikResultToSource(item = {}) {
   const translation = item.translation?.title || item.translation?.type || "Озвучка";
   const episodesCount = Number(item.last_episode || item.last_season_episode || 0) || 1;
+  const baseLink = normalizeUrl(item.link);
+  const hasQuery = baseLink.includes("?");
+  const separator = hasQuery ? "&" : "?";
+  const episodeTemplate = baseLink ? `${baseLink}${separator}episode={episode}` : "";
 
   return {
     id: item.id || item.shikimori_id,
+    translationId: item.translation?.id || null,
     label: translation,
     kind: "episode",
     translation,
     episodesCount,
-    embedUrl: normalizeUrl(item.link),
+    embedUrl: baseLink,
+    episodeTemplate,
     directUrl: "",
     quality: item.quality || "auto"
   };

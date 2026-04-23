@@ -128,6 +128,13 @@
       mount.innerHTML = `<iframe class='external-player' src='${url}' allowfullscreen allow='autoplay; fullscreen'></iframe>`;
     }
 
+    function buildEpisodeUrl(templateOrUrl, episode) {
+      if (!templateOrUrl) return "";
+      if (templateOrUrl.includes("{episode}")) return templateOrUrl.replaceAll("{episode}", String(episode));
+      const hasQuery = templateOrUrl.includes("?");
+      return `${templateOrUrl}${hasQuery ? "&" : "?"}episode=${encodeURIComponent(episode)}`;
+    }
+
     function renderEpisodes(episodes, onSelect) {
       const host = document.getElementById("episodeList");
       host.innerHTML = "";
@@ -198,21 +205,29 @@
 
       const sources = (playerData.sources || []).filter((s) => s.kind !== "pv" && s.kind !== "other");
       const info = document.getElementById("playerInfo");
-      let current = 0;
       let player;
+
+      const findSourceByDub = () => {
+        const selectedDub = dubSelect?.value;
+        if (!selectedDub) return sources[0] || null;
+        return sources.find((source) => source.translation === selectedDub || source.label === selectedDub) || sources[0] || null;
+      };
 
       const mountByEpisode = (index) => {
         if (player) player.destroy();
-        current = Math.min(index, Math.max(sources.length - 1, 0));
+        const selectedEpisode = Number((episodes[index] || {}).episode || index + 1);
+        const activeSource = findSourceByDub();
+        const sourceEpisodeUrl = buildEpisodeUrl(activeSource?.episodeTemplate || activeSource?.embedUrl, selectedEpisode);
+        const fallbackEpisodeUrl = buildEpisodeUrl(playerData.embed?.url, selectedEpisode);
 
-        if (sources[current]?.directUrl) {
-          player = mountPlyr(sources[current]);
-          info.textContent = `Источник: встроенный плеер (${sources[current].label || "видео"}).`;
+        if (activeSource?.directUrl) {
+          player = mountPlyr(activeSource);
+          info.textContent = `Источник: встроенный плеер (${activeSource.label || "видео"}).`;
           return;
         }
 
-        if (playerData.embed?.url) {
-          mountEmbed(playerData.embed.url);
+        if (sourceEpisodeUrl || fallbackEpisodeUrl) {
+          mountEmbed(sourceEpisodeUrl || fallbackEpisodeUrl);
           info.textContent = playerData.embed.warning || "Источник: Kodik iframe.";
           return;
         }
@@ -237,6 +252,8 @@
         mountByEpisode(episodeSelect.selectedIndex);
         document.querySelectorAll(".episode-btn").forEach((btn, idx) => btn.classList.toggle("active", idx === episodeSelect.selectedIndex));
       };
+
+      dubSelect.onchange = () => mountByEpisode(episodeSelect.selectedIndex);
 
       skipIntroBtn.onclick = () => {
         if (player) player.currentTime = playerData.controls?.skipOpening || 85;
