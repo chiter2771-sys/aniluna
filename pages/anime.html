@@ -102,6 +102,11 @@
       mount.innerHTML = `<iframe class='external-player' src='${url}' allowfullscreen allow='autoplay; fullscreen'></iframe>`;
     }
 
+    function mountVideo(url) {
+      const mount = document.getElementById("playerMount");
+      mount.innerHTML = `<video class='external-player' src='${url}' controls autoplay playsinline></video>`;
+    }
+
     function buildEpisodeUrl(templateOrUrl, episode) {
       if (!templateOrUrl) return "";
       if (templateOrUrl.includes("{episode}")) return templateOrUrl.replaceAll("{episode}", String(episode));
@@ -177,29 +182,63 @@
       bindCarousels();
       const sources = (playerData.sources || []).filter((s) => s.kind !== "pv" && s.kind !== "other");
       const info = document.getElementById("playerInfo");
-      const activeSource = sources[0] || null;
+      const controlsHost = document.createElement("div");
+      controlsHost.className = "source-row";
+      const dubSelect = document.createElement("select");
+      dubSelect.className = "player-select";
+      controlsHost.appendChild(dubSelect);
+      if (sources.length > 1) {
+        sources.forEach((source, idx) => {
+          const opt = document.createElement("option");
+          opt.value = String(source.translationId || idx);
+          opt.textContent = source.translation || source.label || `Озвучка ${idx + 1}`;
+          dubSelect.appendChild(opt);
+        });
+      } else {
+        dubSelect.style.display = "none";
+      }
+      info.before(controlsHost);
 
-      const findSourceByDub = () => {
-        const selectedDub = dubSelect?.value;
-        if (!selectedDub) return sources[0] || null;
-        return sources.find((source) => source.translation === selectedDub || source.label === selectedDub) || sources[0] || null;
-      };
+      const current = { source: sources[0] || null };
+      const findSourceByDub = () =>
+        sources.find((source, idx) => String(source.translationId || idx) === dubSelect.value) || sources[0] || null;
 
-      const mountByEpisode = (index) => {
+      const mountByEpisode = async (index) => {
+        current.source = findSourceByDub();
         const selectedEpisode = Number((episodes[index] || {}).episode || index + 1);
-        const sourceEpisodeUrl = buildEpisodeUrl(activeSource?.episodeTemplate || activeSource?.embedUrl, selectedEpisode);
+        const sourceEpisodeUrl = buildEpisodeUrl(current.source?.episodeTemplate || current.source?.embedUrl, selectedEpisode);
         const fallbackEpisodeUrl = buildEpisodeUrl(playerData.embed?.url, selectedEpisode);
+        let stream = null;
 
-        if (sourceEpisodeUrl || fallbackEpisodeUrl) {
-          mountEmbed(sourceEpisodeUrl || fallbackEpisodeUrl);
-          info.textContent = playerData.embed.warning || "Источник: Kodik iframe.";
+        if (animeId && current.source) {
+          const params = new URLSearchParams({
+            episode: String(selectedEpisode),
+            translationId: String(current.source.translationId || "")
+          });
+          const response = await fetch(`/api/stream/${animeId}?${params.toString()}`);
+          if (response.ok) stream = await response.json();
+        }
+
+        if (stream?.preferred) {
+          mountVideo(stream.preferred);
+          info.textContent = `Источник: ${stream.translation || "Kodik"} · серия ${selectedEpisode}`;
           return;
         }
 
-        info.textContent = "Не удалось сформировать ссылку Kodik плеера.";
+        if (sourceEpisodeUrl || fallbackEpisodeUrl) {
+          mountEmbed(sourceEpisodeUrl || fallbackEpisodeUrl);
+          info.textContent = `${playerData.embed.warning || "Источник: Kodik iframe."} (fallback iframe)`;
+          return;
+        }
+
+        info.textContent = "Не удалось сформировать ссылку на воспроизведение.";
       };
 
-      renderEpisodes(episodes.length ? episodes : [{ episode: 1 }], (index) => mountByEpisode(index));
+      renderEpisodes(episodes.length ? episodes : [{ episode: 1 }], (index) => { mountByEpisode(index); });
+      dubSelect.onchange = () => {
+        const activeEpisode = [...document.querySelectorAll(".episode-btn")].findIndex((item) => item.classList.contains("active"));
+        mountByEpisode(activeEpisode === -1 ? 0 : activeEpisode);
+      };
       mountByEpisode(0);
 
       let lastY = scrollY;

@@ -58,6 +58,7 @@ body.no-scroll { overflow: hidden; }
 .skip-btn { position: absolute; right: 12px; bottom: 72px; z-index: 8; opacity: 0; transition: .2s ease; }
 .player-shell:hover .player-top-controls, .player-shell:hover .skip-btn, .player-shell:focus-within .player-top-controls, .player-shell:focus-within .skip-btn, .player-shell.persistent-controls .player-top-controls, .player-shell.persistent-controls .skip-btn { opacity: 1; transform: translateY(0); }
 .player-mount.integrated video, .external-player { width: 100%; min-height: min(58vw, 640px); border: 0; }
+.source-row { margin-top: 10px; max-width: 320px; }
 .episode-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .episode-btn.active, .genre-chip.active { border-color: rgba(139, 92, 246, .95); background: rgba(139, 92, 246, 0.2); }
 .player-info { margin-top: 10px; color: var(--muted); }

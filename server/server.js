@@ -3,7 +3,7 @@ const path = require("path");
 const fs = require("fs");
 const axios = require("axios");
 const cors = require("cors");
-const { getKodikToken, searchByShikimoriId } = require("./parsers/animeParsersAdapter");
+const { getKodikToken, searchByShikimoriId, resolveStreamFromEmbed } = require("./parsers/animeParsersAdapter");
 
 const app = express();
 const root = path.join(__dirname, "..");
@@ -373,6 +373,8 @@ app.get("/api/player/:id", async (req, res) => {
 
     const parsed = await searchByShikimoriId(id);
     if (parsed.ok && parsed.sources.length) {
+      const previewEpisode = parsed.episodes?.[0]?.episode || 1;
+      const previewStream = await resolveStreamFromEmbed(parsed.sources[0].episodeTemplate || parsed.sources[0].embedUrl, previewEpisode);
       const payload = {
         sources: parsed.sources,
         controls: {
@@ -387,6 +389,11 @@ app.get("/api/player/:id", async (req, res) => {
           provider: "kodik",
           url: parsed.sources[0].episodeTemplate || parsed.sources[0].embedUrl,
           warning: "Плеер загружен через адаптер AnimeParsers/Kodik."
+        },
+        stream: {
+          preferred: previewStream.media?.[0] || "",
+          media: previewStream.media || [],
+          episode: previewEpisode
         },
         source: "anime-parsers-kodik"
       };
@@ -425,6 +432,34 @@ app.get("/api/player/:id", async (req, res) => {
         warning: "Не удалось загрузить источники с API."
       }
     });
+  }
+});
+
+app.get("/api/stream/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+    const episode = Math.max(1, Number(req.query.episode || 1));
+    const translationId = String(req.query.translationId || "");
+
+    const parsed = await searchByShikimoriId(id);
+    if (!parsed.ok || !parsed.sources?.length) {
+      return res.status(404).json({ ok: false, error: "Источники не найдены." });
+    }
+
+    const source = parsed.sources.find((item) => String(item.translationId || "") === translationId) || parsed.sources[0];
+    const resolved = await resolveStreamFromEmbed(source.episodeTemplate || source.embedUrl, episode);
+
+    return res.json({
+      ok: resolved.ok,
+      episode,
+      translationId: source.translationId || null,
+      translation: source.translation,
+      media: resolved.media || [],
+      preferred: resolved.media?.[0] || "",
+      embedUrl: resolved.embedUrl
+    });
+  } catch {
+    return res.status(500).json({ ok: false, error: "Не удалось получить поток." });
   }
 });
 
