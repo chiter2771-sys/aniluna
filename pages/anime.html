@@ -45,6 +45,7 @@
         <div id="playerMount" class="player-mount integrated"></div>
         <button class="skip-btn" id="skipIntroBtn">Пропустить опенинг</button>
       </div>
+      <div id="playerInfo" class="player-info"></div>
       <div id="episodeList" class="episode-row"></div>
     </section>
 
@@ -122,6 +123,27 @@
       });
     }
 
+    function mountEmbed(url) {
+      const mount = document.getElementById("playerMount");
+      mount.innerHTML = `<iframe class='external-player' src='${url}' allowfullscreen allow='autoplay; fullscreen'></iframe>`;
+    }
+
+    function renderEpisodes(episodes, onSelect) {
+      const host = document.getElementById("episodeList");
+      host.innerHTML = "";
+      (episodes || []).forEach((ep, idx) => {
+        const btn = document.createElement("button");
+        btn.className = `source-btn episode-btn ${idx === 0 ? "active" : ""}`;
+        btn.textContent = `Серия ${ep.episode || idx + 1}`;
+        btn.onclick = () => {
+          host.querySelectorAll(".episode-btn").forEach((n) => n.classList.remove("active"));
+          btn.classList.add("active");
+          onSelect(idx, ep);
+        };
+        host.appendChild(btn);
+      });
+    }
+
     async function showCharacterModal(characterId, fallback) {
       const res = await fetch(`/api/character/${characterId}`);
       const data = res.ok ? { ...fallback, ...(await res.json()) } : fallback;
@@ -153,7 +175,7 @@
       desc.textContent = cleanDescription(anime.description) || "Описание отсутствует";
       status.textContent = mapStatus(anime.status);
       kind.textContent = mapKind(anime.kind);
-      episodesCount.textContent = anime.episodes ? `${anime.episodes}/${anime.episodes}` : "?/?";
+      episodesCount.textContent = anime.episodes ? `${anime.episodesAired || anime.episodes}/${anime.episodes}` : "?/?";
       year.textContent = anime.aired_on ? anime.aired_on.slice(0, 4) : "—";
       duration.textContent = `${anime.duration || "?"} мин`;
       rating.textContent = anime.score || "?";
@@ -168,27 +190,57 @@
 
       related.innerHTML = (anime.related || []).slice(0, 12).map((r) => renderCard(r, r.relation || "Рекомендация")).join("");
       [...related.querySelectorAll(".mini-card")].forEach((card, i) => {
-        card.onclick = () => location.href = `pages/anime.html?id=${anime.related[i].id}`;
+        card.onclick = () => location.href = `/pages/anime.html?id=${anime.related[i].id}`;
       });
 
       bindCarousels();
       renderTopControls(playerData.controls || {}, episodes);
 
       const sources = (playerData.sources || []).filter((s) => s.kind !== "pv" && s.kind !== "other");
+      const info = document.getElementById("playerInfo");
       let current = 0;
-      let player = mountPlyr(sources[current]);
+      let player;
+
+      const mountByEpisode = (index) => {
+        if (player) player.destroy();
+        current = Math.min(index, Math.max(sources.length - 1, 0));
+
+        if (sources[current]?.directUrl) {
+          player = mountPlyr(sources[current]);
+          info.textContent = `Источник: встроенный плеер (${sources[current].label || "видео"}).`;
+          return;
+        }
+
+        if (playerData.embed?.url) {
+          mountEmbed(playerData.embed.url);
+          info.textContent = playerData.embed.warning || "Источник: Kodik iframe.";
+          return;
+        }
+
+        player = mountPlyr();
+        info.textContent = "Резервный демо-источник: у тайтла нет доступного stream URL.";
+      };
+
+      renderEpisodes(episodes.length ? episodes : [{ episode: 1 }], (index) => mountByEpisode(index));
+      mountByEpisode(0);
 
       nextEpisode.onclick = () => {
         const select = episodeSelect;
-        if (select.selectedIndex < select.options.length - 1) select.selectedIndex += 1;
-        if (sources.length > 1) {
-          current = Math.min(current + 1, sources.length - 1);
-          player.destroy();
-          player = mountPlyr(sources[current]);
+        if (select.selectedIndex < select.options.length - 1) {
+          select.selectedIndex += 1;
+          mountByEpisode(select.selectedIndex);
+          document.querySelectorAll(".episode-btn").forEach((btn, idx) => btn.classList.toggle("active", idx === select.selectedIndex));
         }
       };
 
-      skipIntroBtn.onclick = () => player.currentTime = playerData.controls?.skipOpening || 85;
+      episodeSelect.onchange = () => {
+        mountByEpisode(episodeSelect.selectedIndex);
+        document.querySelectorAll(".episode-btn").forEach((btn, idx) => btn.classList.toggle("active", idx === episodeSelect.selectedIndex));
+      };
+
+      skipIntroBtn.onclick = () => {
+        if (player) player.currentTime = playerData.controls?.skipOpening || 85;
+      };
 
       let lastY = scrollY;
       window.addEventListener("scroll", () => {
@@ -199,7 +251,7 @@
     }
 
     globalSearch.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") location.href = `/?q=${encodeURIComponent(globalSearch.value.trim())}`;
+      if (e.key === "Enter") location.href = `/search?q=${encodeURIComponent(globalSearch.value.trim())}`;
     });
 
     init();
