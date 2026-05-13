@@ -4,6 +4,25 @@ const { normalizeAnime, normalizeTranslation } = require('../utils/normalize');
 
 const router = express.Router();
 
+router.get('/health', async (_req, res) => {
+  res.json({ ok: true, timestamp: new Date().toISOString() });
+});
+
+router.get('/list', async (req, res, next) => {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 24, 50);
+    const payload = await kodikGet('/list', {
+      with_material_data: true,
+      limit,
+      sort: 'shikimori_rating'
+    });
+
+    res.json({ items: (payload.results || []).map(normalizeAnime) });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get('/search', async (req, res, next) => {
   try {
     const q = (req.query.q || '').trim();
@@ -12,6 +31,15 @@ router.get('/search', async (req, res, next) => {
     const payload = await kodikGet('/search', { title: q, with_material_data: true, limit: 24 });
     const items = (payload.results || []).map(normalizeAnime);
     res.json({ items });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/genres', async (req, res, next) => {
+  try {
+    const payload = await kodikGet('/genres');
+    res.json({ items: payload.results || [] });
   } catch (err) {
     next(err);
   }
@@ -41,24 +69,6 @@ router.get('/player/:id', async (req, res, next) => {
       episodes: playerData?.episodes || [],
       playerLink: playerData?.link || null
     });
-  } catch (err) {
-    next(err);
-  }
-});
-
-router.get('/genres', async (req, res, next) => {
-  try {
-    const payload = await kodikGet('/genres');
-    res.json({ items: payload.results || [] });
-  } catch (err) {
-    next(err);
-  }
-});
-
-router.get('/years', async (req, res, next) => {
-  try {
-    const payload = await kodikGet('/years');
-    res.json({ items: payload.results || [] });
   } catch (err) {
     next(err);
   }

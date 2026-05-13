@@ -14,14 +14,26 @@ const reactBuildDir = path.resolve(__dirname, '../../frontend/dist');
 const reactIndexPath = path.join(reactBuildDir, 'index.html');
 const hasReactBuild = fs.existsSync(reactIndexPath);
 
+const faviconIcoBase64 = 'AAABAAEAEBAAAAAAIABoBAAAFgAAACgAAAAQAAAAIAAAAAEAGAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD///8A';
+const appleTouchPngBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7Zx4QAAAAASUVORK5CYII=';
+
 app.set('trust proxy', 1);
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 
-app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, uptime: process.uptime(), timestamp: new Date().toISOString(), hasReactBuild });
-});
 app.get('/health', (_req, res) => res.status(200).send('ok'));
+
+app.get('/favicon.ico', (_req, res) => {
+  res.setHeader('Content-Type', 'image/x-icon');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.send(Buffer.from(faviconIcoBase64, 'base64'));
+});
+
+app.get('/apple-touch-icon.png', (_req, res) => {
+  res.setHeader('Content-Type', 'image/png');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.send(Buffer.from(appleTouchPngBase64, 'base64'));
+});
 
 app.use('/api', apiRoutes);
 
