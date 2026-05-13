@@ -5,9 +5,19 @@ function notFound(req, res) {
 function errorHandler(err, req, res, next) {
   const status = err.status || 500;
   const message = err.message || 'Internal server error';
+
   if (status >= 500) {
-    console.error('[AniLuna API error]', err);
+    const cause = err.cause;
+    console.error('[AniLuna API error]', {
+      path: req.path,
+      method: req.method,
+      status,
+      message,
+      causeCode: cause && cause.code ? cause.code : undefined,
+      causeMessage: cause && cause.message ? cause.message : undefined
+    });
   }
+
   res.status(status).json({ error: message });
 }
 

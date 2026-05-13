@@ -1,7 +1,7 @@
 const axios = require('axios');
 
 const client = axios.create({
-  baseURL: 'https://kodikapi.com',
+  baseURL: 'https://kodik-api.com',
   timeout: 15000
 });
 
@@ -17,8 +17,15 @@ function getToken() {
 
 async function kodikGet(path, params = {}) {
   const token = getToken();
-  const response = await client.get(path, { params: { token, ...params } });
-  return response.data;
+  try {
+    const response = await client.get(path, { params: { token, ...params } });
+    return response.data;
+  } catch (error) {
+    const wrapped = new Error('Kodik upstream is unavailable');
+    wrapped.status = 502;
+    wrapped.cause = error;
+    throw wrapped;
+  }
 }
 
 module.exports = { kodikGet };
