@@ -1,13 +1,13 @@
 {
   "name": "aniluna",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "private": true,
   "workspaces": [
     "frontend",
     "backend"
   ],
   "scripts": {
-    "start": "npm --workspace backend start",
+    "start": "node backend/src/index.js",
     "build": "npm --workspace frontend run build"
   }
 }
