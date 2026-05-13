@@ -3,21 +3,34 @@ import { Link } from 'react-router-dom';
 import { api } from '../services/api';
 
 export default function HomePage() {
-  const [query, setQuery] = useState('naruto');
+  const [query, setQuery] = useState('');
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
-    api.search(query).then((data) => {
-      if (active) setItems(data.items || []);
-    }).catch(() => {
-      if (active) setItems([]);
-    }).finally(() => active && setLoading(false));
+    const controller = new AbortController();
+
+    const load = async () => {
+      setLoading(true);
+      try {
+        const data = query.trim()
+          ? await api.search(query.trim(), { signal: controller.signal })
+          : await api.list({ signal: controller.signal });
+        if (active) setItems(data.items || []);
+      } catch {
+        if (active) setItems([]);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    const timer = setTimeout(load, 350);
 
     return () => {
       active = false;
+      controller.abort();
+      clearTimeout(timer);
     };
   }, [query]);
 
